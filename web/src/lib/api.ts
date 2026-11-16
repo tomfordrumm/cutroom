@@ -10,6 +10,25 @@ export type Job = {
   error: string | null
 }
 
+/** What the editing agent spent. costUsd is at API list prices (Claude Code); Codex reports no cost. */
+export type Usage = {
+  runs: number
+  inputTokens: number
+  cacheWriteTokens: number
+  cacheReadTokens: number
+  outputTokens: number
+  thinkingTokens: number
+  tokens: number
+  costUsd: number | null
+  unpricedRuns: number
+}
+export type UsageSummary = {
+  total: Usage
+  byModel: (Usage & { agent: string; model: string | null })[]
+  byMonth: (Usage & { month: string })[]
+  videos: (Usage & { id: number; title: string; stage: Stage; latestVersion: number | null; lastRunAt: string | null })[]
+}
+
 export type Video = {
   id: number
   title: string
@@ -20,6 +39,7 @@ export type Video = {
   created_at: string
   updated_at: string
   job: Job | null
+  usage: Usage
 }
 
 export type Message = {
@@ -44,6 +64,7 @@ export type Version = {
   model: string | null
   buildSeconds: number | null
   files: string[]
+  usage: Usage | null
 }
 
 export type MediaFile = { name: string; kind: "audio" | "image" | "video"; size: number; duration: number | null; width: number | null; height: number | null; hasAudio: boolean }
@@ -189,3 +210,15 @@ export function fmtTime(seconds: number | null | undefined, tenths = false) {
 }
 
 export const isActive = (job: Job | null | undefined): job is Job & { status: "queued" | "running" } => !!job && (job.status === "queued" || job.status === "running")
+
+/** 1.3067 → "$1,31"; null → "—". */
+export const fmtUsd = (value: number | null | undefined) =>
+  value == null ? "—" : `$${value.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+/** 1485920 → "1,5 млн", 84000 → "84 тыс." */
+export function fmtTokens(value: number) {
+  if (value >= 1e6) return `${(value / 1e6).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} млн`
+  if (value >= 1e3) return `${Math.round(value / 1e3)} тыс.`
+  return String(value)
+}
+/** "$1,31 · 1,5 млн токенов" or tokens only when no cost was reported. */
+export const fmtUsage = (u: Usage) => [u.costUsd != null ? fmtUsd(u.costUsd) : null, `${fmtTokens(u.tokens)} токенов`].filter(Boolean).join(" · ")

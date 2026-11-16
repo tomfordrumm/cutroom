@@ -13,6 +13,7 @@ import { activeJob, addMessage, db, enqueueJob, getSetting, getVideo, now, setSe
 import { bindChat, disconnectTelegram, NOTIFY_EVENTS, sendTest, setToken, telegramState, updateTelegram } from "./notify.js";
 import { isJobConcurrency, jobConcurrency, machine, MAX_CONCURRENCY } from "./queue.js";
 import { normalizeSound, SOUND_DEFAULTS, SOUND_LIMITS } from "./sound.js";
+import { backfillUsage, usageByVideo, usageSummary, videoUsage } from "./usage.js";
 import { addEntry, listDictionary, removeEntry, updateEntry } from "./dictionary.js";
 import { assetsDir, categoryDir, checkUpload, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME } from "./library.js";
 import { isWhisperModel, modelDownloaded, WHISPER_MODELS, whisperModelId } from "./models.js";
@@ -128,6 +129,7 @@ function passwordMatches(candidate) {
 
 async function versionsOf(videoId) {
   const dir = path.join(videoDir(videoId), "versions");
+  const usage = videoUsage(videoId);
   const names = (await readdir(dir).catch(() => [])).filter((name) => /^v\d{3}$/.test(name)).sort();
   const result = [];
   for (const name of names) {
@@ -147,14 +149,15 @@ async function versionsOf(videoId) {
       model: build?.agentRun?.usedModel ?? build?.agentRun?.model ?? null,
       buildSeconds: build?.seconds ?? null,
       files: outputs.filter((file) => !file.startsWith(".")),
+      usage: usage.versions[Number(name.slice(1))] ?? null,
     });
   }
   return result;
 }
 
-function videoSummary(video) {
+function videoSummary(video, usage = null) {
   const job = activeJob(video.id) ?? db.prepare("SELECT * FROM jobs WHERE video_id = ? ORDER BY id DESC LIMIT 1").get(video.id) ?? null;
-  return { ...video, job };
+  return { ...video, job, usage: usage ?? videoUsage(video.id).total };
 }
 
 function requireVideo(id) {
@@ -401,9 +404,11 @@ route("PUT", "/api/taste/refs", async (req, res, { query }) => {
 });
 
 route("GET", "/api/videos", (req, res) => {
-  const videos = db.prepare("SELECT * FROM videos ORDER BY updated_at DESC").all().map(videoSummary);
+  const usage = usageByVideo();
+  const videos = db.prepare("SELECT * FROM videos ORDER BY updated_at DESC").all().map((video) => videoSummary(video, usage.get(video.id) ?? videoUsage(video.id).total));
   send(res, 200, { videos });
 });
+route("GET", "/api/usage", (req, res) => send(res, 200, usageSummary()));
 route("POST", "/api/videos", async (req, res) => {
   const { title, brief = "" } = await readBody(req);
   if (!String(title ?? "").trim()) throw new HttpError(400, "Нужно название");
@@ -601,3 +606,5 @@ const server = http.createServer(async (req, res) => {
 server.requestTimeout = 0; // large uploads
 attachTerminal(server, { isAuthenticated });
 server.listen(config.port, () => console.log(`Cutroom on http://0.0.0.0:${config.port}${config.password ? "" : " (no password set)"}`));
+// Versions made before runs were recorded: read their agent logs once.
+backfillUsage().then((added) => { if (added) console.log(`Usage: ${added} earlier agent runs read from logs.`); }).catch((error) => console.log(`Usage backfill failed: ${error.message}`));

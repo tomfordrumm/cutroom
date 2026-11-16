@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { AudioLines, Bell, Bot, Layers, LogOut, Music, Palette, Volume2, type LucideIcon } from "lucide-react"
+import { AudioLines, Bell, Bot, Layers, LogOut, Music, Palette, Volume2, Wallet, type LucideIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, Navigate, NavLink, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -12,6 +12,7 @@ import { QueueSettings } from "@/components/QueueSettings"
 import { SoundSettings } from "@/components/SoundSettings"
 import { SpeechSettings } from "@/components/SpeechSettings"
 import { TelegramSettings } from "@/components/TelegramSettings"
+import { UsageStats } from "@/components/UsageStats"
 import { WebTerminal } from "@/components/WebTerminal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,6 +29,7 @@ const SECTIONS: Section[] = [
   { id: "sound", label: "Звук", icon: Volume2, description: "Громкость голоса, музыки и эффектов.", render: () => <SoundSection /> },
   { id: "speech", label: "Распознавание речи", icon: AudioLines, description: "Расшифровка, субтитры и словарь терминов.", render: () => <SpeechSection /> },
   { id: "queue", label: "Очередь монтажа", icon: Layers, description: "Сколько роликов монтировать одновременно.", render: () => <QueueSection /> },
+  { id: "usage", label: "Расходы", icon: Wallet, description: "Сколько токенов и денег ушло на работу агента.", render: () => <UsageSection /> },
   { id: "notifications", label: "Уведомления", icon: Bell, description: "Сообщения, когда ролик ждёт вас.", render: () => <NotificationsSection /> },
 ]
 
@@ -190,6 +192,14 @@ function QueueSection() {
   return (
     <Block title="Несколько роликов в монтаже" description="Что делать, когда в монтаж отправлено несколько роликов.">
       <QueueSettings />
+    </Block>
+  )
+}
+
+function UsageSection() {
+  return (
+    <Block title="Агент" description="Каждый прогон агента: попытки, токены и стоимость по ролику, модели и месяцу.">
+      <UsageStats />
     </Block>
   )
 }

@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { api, fmtDate, isActive, post, STAGES, upload, vname, type Video } from "@/lib/api"
+import { api, fmtDate, fmtUsage, fmtUsd, isActive, post, STAGES, upload, vname, type Video } from "@/lib/api"
 
 function VideoCard({ video }: { video: Video }) {
   const showJob = isActive(video.job) || (video.job != null && video.job.status === "failed" && video.stage !== "accepted")
@@ -27,6 +27,7 @@ function VideoCard({ video }: { video: Video }) {
       <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         {video.latest_version && <Badge variant="secondary">{vname(video.latest_version)}</Badge>}
         {video.accepted_version && <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400">принята {vname(video.accepted_version)}</Badge>}
+        {video.usage?.runs > 0 && video.usage.costUsd != null && <span title={`Агент: ${fmtUsage(video.usage)}, по ценам API`}>{fmtUsd(video.usage.costUsd)}</span>}
         <span className="ml-auto">{fmtDate(video.updated_at)}</span>
       </div>
       {showJob && <JobStatus job={video.job} className="mt-3" />}

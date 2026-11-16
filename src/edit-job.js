@@ -32,6 +32,7 @@ import { activeEntries, dictionaryMarkdown, ingestProposals, packetWithDictionar
 import { ensureModels, whisperModelId } from "./models.js";
 import { masterAudio, masterGainDb, measureLoudness, normalizeSound } from "./sound.js";
 import { checkScenes } from "./scenes.js";
+import { recordRun } from "./usage.js";
 import { listSources } from "./sources.js";
 import { ensureWaveform } from "./timeline.js";
 
@@ -317,13 +318,17 @@ export async function runEditJob(job, { signal }) {
     const basePrompt = "Ты монтажёр в Cutroom. Прочитай AGENTS.md в текущей папке и выполни задачу из request.json. Работай только в текущей папке. Инструменты: команда cutroom (cutroom --help).";
     let prompt = basePrompt;
     const { model, effort } = normalizeAgentModels(getSetting("agentModels", {}))[agent];
-    agentRun = { model: model || null, effort: effort || null, usedModel: null };
+    agentRun = { model: model || null, effort: effort || null, usedModel: null, usage: null };
     for (let attempt = 1; attempt <= 2; attempt++) {
       step("agent", attempt === 1 ? `${AGENT_LABELS[agent]} изучает материал` : `${AGENT_LABELS[agent]} исправляет ответ`);
+      const runStarted = now();
       const result = await runAgent(agent, {
         prompt, cwd: dir, logPath, signal, model, effort,
         onActivity: (activity) => step("agent", `${AGENT_LABELS[agent]}: ${activity}`),
       });
+      // Every attempt is paid for, whether or not its answer is used.
+      recordRun({ videoId: video.id, version: number, jobId: job.id, attempt, agent, model: result.model, effort, usage: result.usage, exitCode: result.exitCode, startedAt: runStarted });
+      agentRun.usage = addUsage(agentRun.usage, result.usage);
       signal.throwIfAborted();
       agentRun.usedModel = result.model ?? agentRun.usedModel;
       try {
@@ -454,7 +459,8 @@ export async function runEditJob(job, { signal }) {
 
   const sceneNote = sceneResult?.problems.length ? `\nКарта сцен: осталось замечаний ${sceneResult.problems.length} — ${sceneResult.problems.slice(0, 3).join("; ")}${sceneResult.problems.length > 3 ? "…" : ""}` : "";
   const loudness = sound?.voiceLufs != null ? ` Громкость: голос ${fmtDb(sound.voiceLufs)} → ${fmtDb(sound.outputLufs ?? sound.settings.targetLufs)} LUFS.` : "";
-  const extras = `${graphicsResult ? ` Графика: ${graphicsResult.overlays} элементов.` : ""}${soundSummary ? ` Звук: ${soundSummary}.` : ""}${loudness}`;
+  const spent = agentRun?.usage ? ` Агент: ${usageLine(agentRun.usage)}.` : "";
+  const extras = `${graphicsResult ? ` Графика: ${graphicsResult.overlays} элементов.` : ""}${soundSummary ? ` Звук: ${soundSummary}.` : ""}${loudness}${spent}`;
   const warnings = placed?.warnings?.length ? `\nНе показано: ${placed.warnings.join("; ")}` : "";
   const layoutIssues = layoutReview?.overlays?.filter((o) => o.status !== "pass") ?? [];
   const layoutNote = layoutIssues.length
@@ -482,6 +488,27 @@ async function sceneCheck(dir, duration) {
   } catch (error) {
     return { problems: [error.message], scenes: [] };
   }
+}
+
+/** "$1,31 по ценам API, 1,5 млн токенов, попыток 2". */
+function usageLine(usage) {
+  const tokens = (usage.inputTokens ?? 0) + (usage.cacheWriteTokens ?? 0) + (usage.cacheReadTokens ?? 0) + (usage.outputTokens ?? 0);
+  const amount = tokens >= 1e6 ? `${(tokens / 1e6).toFixed(1).replace(".", ",")} млн` : `${Math.round(tokens / 1000)} тыс.`;
+  const cost = usage.costUsd != null ? `$${usage.costUsd.toFixed(2).replace(".", ",")} по ценам API, ` : "";
+  return `${cost}${amount} токенов${usage.attempts > 1 ? `, попыток ${usage.attempts}` : ""}`;
+}
+
+/** Sum of two runs' usage; the cost stays null when a run had none (Codex). */
+function addUsage(a, b) {
+  if (!b) return a;
+  if (!a) return { ...b, attempts: 1 };
+  const sum = (key) => (a[key] ?? 0) + (b[key] ?? 0);
+  return {
+    inputTokens: sum("inputTokens"), cacheWriteTokens: sum("cacheWriteTokens"), cacheReadTokens: sum("cacheReadTokens"),
+    outputTokens: sum("outputTokens"), thinkingTokens: sum("thinkingTokens"),
+    costUsd: a.costUsd == null || b.costUsd == null ? null : a.costUsd + b.costUsd,
+    costBasis: a.costBasis ?? b.costBasis, apiMs: sum("apiMs"), models: [...new Set([...(a.models ?? []), ...(b.models ?? [])])], attempts: (a.attempts ?? 1) + 1,
+  };
 }
 
 const fmtDb = (value) => value.toFixed(1).replace("-", "−").replace(".", ",");

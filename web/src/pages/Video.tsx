@@ -20,7 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  api, fmtTime, isActive, patch, post, STAGE_LABEL, upload, vname, type Message, type Timeline as TimelineData, type VideoDetail,
+  api, fmtTime, fmtTokens, fmtUsage, fmtUsd, isActive, patch, post, STAGE_LABEL, upload, vname, type Message, type Timeline as TimelineData, type Usage, type VideoDetail,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -229,6 +229,7 @@ export default function VideoPage() {
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{data.title}</h1>
             <Badge variant="outline" className={STAGE_TONE[data.stage]}>{STAGE_LABEL[data.stage]}</Badge>
+            {data.usage?.runs > 0 && <span className="text-sm text-muted-foreground"><UsageNote usage={data.usage} label="Ролик" lead={false} /></span>}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -331,6 +332,7 @@ export default function VideoPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="mr-auto text-sm text-muted-foreground">
                 {fmtTime(version.durationSeconds)} · вырезано {fmtTime(version.removedSeconds)} · {state?.agentLabels[version.agent ?? "none"] ?? version.agent}{version.model ? ` · ${version.model}` : ""}
+                {version.usage && version.usage.runs > 0 && <UsageNote usage={version.usage} label="Версия" />}
               </span>
               {version.files.includes("final.mp4") && <Button size="sm" asChild><a href={`${base}/final.mp4?download`}><Download /> Финал</a></Button>}
               <Button size="sm" variant="outline" asChild><a href={`${base}/preview.mp4?download`}><FileVideo /> Превью</a></Button>
@@ -438,5 +440,25 @@ function DeleteVideo({ video, running }: { video: VideoDetail; running: boolean 
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+/** "· $1,31 · 1,5 млн токенов" with the breakdown on hover. */
+function UsageNote({ usage, label, lead = true }: { usage: Usage; label: string; lead?: boolean }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-default underline decoration-dotted underline-offset-4">{lead ? " · " : ""}{fmtUsage(usage)}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <div className="grid gap-0.5 text-xs">
+          <span className="font-medium">{label}: прогонов агента {usage.runs}</span>
+          <span>Стоимость по ценам API: {usage.costUsd != null ? fmtUsd(usage.costUsd) : "агент её не сообщает"}{usage.unpricedRuns && usage.costUsd != null ? ` (без ${usage.unpricedRuns} прогонов без цены)` : ""}</span>
+          <span>Вход {fmtTokens(usage.inputTokens)}, запись в кэш {fmtTokens(usage.cacheWriteTokens)}, чтение кэша {fmtTokens(usage.cacheReadTokens)}</span>
+          <span>Выход {fmtTokens(usage.outputTokens)}, из них размышления {fmtTokens(usage.thinkingTokens)}</span>
+          <span className="opacity-80">По подписке это эквивалент, а не списание.</span>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   )
 }

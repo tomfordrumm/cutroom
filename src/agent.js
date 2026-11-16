@@ -4,6 +4,7 @@
 import { spawn } from "node:child_process";
 import { createWriteStream, existsSync } from "node:fs";
 import path from "node:path";
+import { usageCollector } from "./agent-usage.js";
 import { config } from "./config.js";
 
 export const AGENT_LABELS = { claude: "Claude Code", codex: "Codex CLI", none: "Без агента" };
@@ -83,8 +84,8 @@ function describe(agent, event) {
 }
 
 /**
- * Run the agent until it exits. Resolves with { exitCode }, rejects on spawn
- * failure or abort. Every output line is appended to logPath.
+ * Run the agent until it exits. Resolves with { exitCode, model, usage },
+ * rejects on spawn failure or abort (a cancelled run reports no usage). Every output line is appended to logPath.
  */
 export function runAgent(agent, { prompt, cwd, logPath, signal, model = "", effort = "", onActivity = () => {} }) {
   const [command, args] = commandFor(agent, prompt, cwd, { model, effort });
@@ -95,12 +96,14 @@ export function runAgent(agent, { prompt, cwd, logPath, signal, model = "", effo
     let buffer = "";
     let lastError = "";
     let usedModel = null;
+    const usage = usageCollector(agent);
     const onLine = (line) => {
       log.write(`${line}\n`);
       try {
         const event = JSON.parse(line);
         if (event.type === "system" && event.subtype === "init" && event.model) usedModel = event.model;
         if (!usedModel && typeof event.model === "string") usedModel = event.model;
+        usage.add(event);
         const activity = describe(agent, event);
         if (activity) onActivity(activity);
         if (activity?.startsWith("Ошибка агента")) lastError = activity;
@@ -127,7 +130,7 @@ export function runAgent(agent, { prompt, cwd, logPath, signal, model = "", effo
       signal?.removeEventListener("abort", abort);
       log.end();
       if (signal?.aborted) reject(new Error("Отменено"));
-      else resolve({ exitCode: code, lastError, model: usedModel ?? (model || null) });
+      else resolve({ exitCode: code, lastError, model: usedModel ?? (model || null), usage: usage.result() });
     });
   });
 }
