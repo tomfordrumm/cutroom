@@ -1,0 +1,12 @@
+# Build the image from this checkout instead of pulling it.
+# ORC_PATH points at an OpenRoughCut checkout; its packages/core is copied in.
+services:
+  app:
+    image: cutroom:local
+    build: &build
+      context: .
+      additional_contexts:
+        orc: ${ORC_PATH:-../VideoEditor}
+  worker:
+    image: cutroom:local
+    build: *build

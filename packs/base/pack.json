@@ -1,0 +1,29 @@
+{
+  "format": "cutroom-pack-v1",
+  "id": "base",
+  "name": "Базовый",
+  "version": "1.0.0",
+  "cutroom": 1,
+  "description": "Плотный разговорный монтаж для Shorts, Reels и TikTok: быстрый старт, крупные субтитры по словам, акценты наездами и ключевыми словами.",
+  "author": "Cutroom",
+  "license": "MIT; шрифт Montserrat — SIL OFL 1.1",
+  "theme": {
+    "accent": "#FFD84D",
+    "accentForeground": "#111111",
+    "background": "#0E0F12",
+    "foreground": "#F7F7F5",
+    "card": "#FFFFFF",
+    "cardForeground": "#111111",
+    "radius": 22,
+    "font": "Inter Variable",
+    "displayFont": "Montserrat",
+    "captionFont": "Montserrat"
+  },
+  "captions": { "style": "plain", "position": "bottom", "wordsPerPage": 3, "uppercase": false },
+  "fonts": [
+    { "family": "Montserrat", "file": "fonts/montserrat-cyrillic-800-normal.woff2", "weight": 800, "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116" },
+    { "family": "Montserrat", "file": "fonts/montserrat-latin-800-normal.woff2", "weight": 800, "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" },
+    { "family": "Montserrat", "file": "fonts/montserrat-cyrillic-900-normal.woff2", "weight": 900, "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116" },
+    { "family": "Montserrat", "file": "fonts/montserrat-latin-900-normal.woff2", "weight": 900, "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }
+  ]
+}
