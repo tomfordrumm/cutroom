@@ -430,8 +430,17 @@ route("PATCH", "/api/videos/:id", async (req, res, { params }) => {
 route("DELETE", "/api/videos/:id", async (req, res, { params }) => {
   const video = requireVideo(params.id);
   if (activeJob(video.id)) throw new HttpError(409, "Сначала остановите монтаж");
+  // Everything of a video lives in its folder: recording, materials, analysis,
+  // versions with previews and finals, frozen media. Files go first, so a
+  // failure leaves the video in the list rather than a folder nobody sees.
+  // The row's messages, jobs and video-only dictionary entries follow by cascade;
+  // the shared library is not touched.
+  try {
+    await rm(videoDir(video.id), { recursive: true, force: true });
+  } catch (error) {
+    throw new HttpError(500, `Не удалось удалить файлы ролика: ${error.message}`);
+  }
   db.prepare("DELETE FROM videos WHERE id = ?").run(video.id);
-  await rm(videoDir(video.id), { recursive: true, force: true });
   send(res, 200, { ok: true });
 });
 route("PUT", "/api/videos/:id/sources", async (req, res, { params, query }) => {

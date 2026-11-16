@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft, Check, Download, FileJson, FileVideo, Maximize, MessageSquarePlus, Pause, Play, RotateCcw, ScrollText, Square,
-  Upload, Volume2, VolumeX, Wand2,
+  Trash2, Upload, Volume2, VolumeX, Wand2,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { useAppState } from "@/App"
 import { SpokenLine, Timeline } from "@/components/Timeline"
@@ -13,7 +13,7 @@ import { VideoChat } from "@/components/VideoChat"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -245,6 +245,7 @@ export default function VideoPage() {
               {data.stage === "accepted" && <Button variant="outline" onClick={() => act("reopen")}><RotateCcw /> Вернуть на доработку</Button>}
             </>
           )}
+          <DeleteVideo video={data} running={running} />
         </div>
       </div>
 
@@ -376,5 +377,66 @@ export default function VideoPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Deletes the video with every file it has, after the author confirms. */
+function DeleteVideo({ video, running }: { video: VideoDetail; running: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const finals = video.versions.filter((v) => v.files.includes("final.mp4")).length
+
+  const remove = async () => {
+    setBusy(true)
+    try {
+      await api(`/api/videos/${video.id}`, { method: "DELETE" })
+      // Leave the page first: its query would otherwise refetch a video that is gone.
+      navigate("/")
+      queryClient.removeQueries({ queryKey: ["video", String(video.id)] })
+      await queryClient.invalidateQueries({ queryKey: ["videos"] })
+      toast.success(`Ролик «${video.title}» удалён`)
+    } catch (error) {
+      toast.error((error as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button variant="ghost" size="icon" aria-label="Удалить ролик" disabled={running} onClick={() => setOpen(true)} className="text-muted-foreground hover:text-destructive">
+              <Trash2 />
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{running ? "Сначала остановите монтаж" : "Удалить ролик"}</TooltipContent>
+      </Tooltip>
+      <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить «{video.title}»?</DialogTitle>
+            <DialogDescription>Это нельзя отменить.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 text-sm">
+            <p>С сервера Cutroom удалится всё, что относится к ролику:</p>
+            <ul className="grid list-disc gap-1 pl-5 text-muted-foreground">
+              <li>запись{video.sources.length ? ` (${video.sources.join(", ")})` : ""} и её разбор</li>
+              {video.assets.length > 0 && <li>материалы ролика: {video.assets.length}</li>}
+              <li>версии: {video.versions.length}{finals ? `, из них с финальным файлом: ${finals}` : ""}</li>
+              <li>чат, правки и слова словаря, добавленные только для этого ролика</li>
+            </ul>
+            <p className="text-muted-foreground">Библиотека, общий словарь и настройки останутся. Нужный финал скачайте заранее.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>Отмена</Button>
+            <Button variant="destructive" disabled={busy} onClick={remove}><Trash2 /> {busy ? "Удаляю…" : "Удалить навсегда"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
