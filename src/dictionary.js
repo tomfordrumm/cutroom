@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS dictionary (
   updated_at TEXT NOT NULL
 );
 `);
+// The video whose agent proposed an entry: a shared word has no video_id, but its card lives in that video's chat.
+if (!db.prepare("PRAGMA table_info(dictionary)").all().some((column) => column.name === "origin_video_id")) {
+  db.exec("ALTER TABLE dictionary ADD COLUMN origin_video_id INTEGER");
+}
 
 function row(entry) {
   return {
@@ -40,6 +44,7 @@ function row(entry) {
     from: entry.from_text,
     to: entry.to_text,
     videoId: entry.video_id,
+    originVideoId: entry.origin_video_id ?? null,
     status: entry.status,
     source: entry.source,
     note: entry.note,
@@ -64,7 +69,7 @@ function sameEntry({ from, to, videoId }) {
     .get(from ?? "", to, videoId ?? 0);
 }
 
-export function addEntry({ from, to, videoId = null, status = "active", source = "author", note = null, version = null }) {
+export function addEntry({ from, to, videoId = null, status = "active", source = "author", note = null, version = null, originVideoId = null }) {
   const fields = validateEntry({ from, to });
   if (!STATUSES.includes(status)) throw new Error("Неизвестное состояние записи.");
   const existing = sameEntry({ ...fields, videoId });
@@ -73,8 +78,8 @@ export function addEntry({ from, to, videoId = null, status = "active", source =
     return getEntry(existing.id);
   }
   const stamp = now();
-  const result = db.prepare("INSERT INTO dictionary (from_text, to_text, video_id, status, source, note, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(fields.from, fields.to, videoId, status, source, note, version, stamp, stamp);
+  const result = db.prepare("INSERT INTO dictionary (from_text, to_text, video_id, status, source, note, version, origin_video_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(fields.from, fields.to, videoId, status, source, note, version, originVideoId, stamp, stamp);
   return getEntry(Number(result.lastInsertRowid));
 }
 
@@ -87,6 +92,14 @@ export function updateEntry(id, changes) {
   db.prepare("UPDATE dictionary SET from_text = ?, to_text = ?, video_id = ?, status = ?, updated_at = ? WHERE id = ?")
     .run(fields.from, fields.to, next.videoId ?? null, next.status, now(), id);
   return getEntry(id);
+}
+
+/** Marks which video proposed an agent entry, for entries stored before that was recorded. */
+export function setOrigin({ from, to, version }, videoId) {
+  let fields;
+  try { fields = validateEntry({ from, to }); } catch { return; }
+  db.prepare("UPDATE dictionary SET origin_video_id = ? WHERE source = 'agent' AND origin_video_id IS NULL AND IFNULL(from_text, '') = ? AND to_text = ? AND (version IS NULL OR version = ?) AND (video_id IS NULL OR video_id = ?)")
+    .run(videoId, fields.from ?? "", fields.to, version ?? null, videoId);
 }
 
 export function removeEntry(id) {
@@ -123,7 +136,7 @@ export async function ingestProposals(dir, { videoId, version, comments }) {
       const comment = commentMentions(comments, fields.to);
       const reason = clean(item?.reason).slice(0, 300) || null;
       const note = comment ? `По правке автора: «${clean(comment.body).slice(0, 160)}»` : reason;
-      const entry = addEntry({ ...fields, videoId: scope, status: comment ? "active" : "proposed", source: "agent", note, version });
+      const entry = addEntry({ ...fields, videoId: scope, status: comment ? "active" : "proposed", source: "agent", note, version, originVideoId: videoId });
       (comment ? result.active : result.proposed).push(entry);
     } catch (error) {
       result.errors.push(`dictionary.json #${index + 1}: ${error.message}`);

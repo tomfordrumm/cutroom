@@ -14,6 +14,7 @@ import { bindChat, disconnectTelegram, NOTIFY_EVENTS, sendTest, setToken, telegr
 import { isJobConcurrency, jobConcurrency, machine, MAX_CONCURRENCY } from "./queue.js";
 import { normalizeSound, SOUND_DEFAULTS, SOUND_LIMITS } from "./sound.js";
 import { backfillUsage, usageByVideo, usageSummary, videoUsage } from "./usage.js";
+import { backfillProposals, decideProposal, videoProposals } from "./proposals.js";
 import { addEntry, listDictionary, removeEntry, updateEntry } from "./dictionary.js";
 import { assetsDir, categoryDir, checkUpload, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME } from "./library.js";
 import { isWhisperModel, modelDownloaded, WHISPER_MODELS, whisperModelId } from "./models.js";
@@ -421,7 +422,7 @@ route("POST", "/api/videos", async (req, res) => {
 route("GET", "/api/videos/:id", async (req, res, { params }) => {
   const video = requireVideo(params.id);
   const messages = db.prepare("SELECT * FROM messages WHERE video_id = ? ORDER BY id").all(video.id);
-  send(res, 200, { ...videoSummary(video), sources: await listSources(video.id), assets: await listAssets(video.id), versions: await versionsOf(video.id), messages });
+  send(res, 200, { ...videoSummary(video), sources: await listSources(video.id), assets: await listAssets(video.id), versions: await versionsOf(video.id), messages, proposals: videoProposals(video.id) });
 });
 route("PATCH", "/api/videos/:id", async (req, res, { params }) => {
   const video = requireVideo(params.id);
@@ -495,6 +496,16 @@ route("POST", "/api/videos/:id/messages", async (req, res, { params }) => {
   send(res, 201, { ok: true });
 });
 // Only comments not yet sent to an edit can be removed; sent ones belong to a version's request.
+// The author's yes or no to a word for the dictionary or a line for the taste profile.
+route("POST", "/api/videos/:id/proposals/:kind/:proposalId", async (req, res, { params }) => {
+  const video = requireVideo(params.id);
+  const { accept } = await readBody(req);
+  if (typeof accept !== "boolean") throw new HttpError(400, "Нужен ответ: accept true или false");
+  const proposal = await decideProposal(video.id, params.kind, Number(params.proposalId), accept);
+  if (!proposal) throw new HttpError(404, "Предложение не найдено");
+  updateVideo(video.id, {});
+  send(res, 200, proposal);
+});
 route("DELETE", "/api/videos/:id/messages/:messageId", (req, res, { params }) => {
   const video = requireVideo(params.id);
   const message = db.prepare("SELECT version FROM messages WHERE id = ? AND video_id = ? AND role = 'user'").get(Number(params.messageId), video.id);
@@ -607,4 +618,5 @@ server.requestTimeout = 0; // large uploads
 attachTerminal(server, { isAuthenticated });
 server.listen(config.port, () => console.log(`Cutroom on http://0.0.0.0:${config.port}${config.password ? "" : " (no password set)"}`));
 // Versions made before runs were recorded: read their agent logs once.
+backfillProposals().then((added) => { if (added) console.log(`Proposals: ${added} earlier taste proposals read from replies.`); }).catch((error) => console.log(`Proposals backfill failed: ${error.message}`));
 backfillUsage().then((added) => { if (added) console.log(`Usage: ${added} earlier agent runs read from logs.`); }).catch((error) => console.log(`Usage backfill failed: ${error.message}`));

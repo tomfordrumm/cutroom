@@ -69,7 +69,12 @@ export type Version = {
 
 export type MediaFile = { name: string; kind: "audio" | "image" | "video"; size: number; duration: number | null; width: number | null; height: number | null; hasAudio: boolean }
 export type Library = { categories: { id: "music" | "sfx" | "other"; label: string; files: MediaFile[] }[]; defaultMusic: string | null }
-export type VideoDetail = Video & { sources: string[]; assets: MediaFile[]; versions: Version[]; messages: Message[] }
+/** Something the agent proposes to keep beyond this version; the author answers yes or no. */
+export type Proposal =
+  | { kind: "dictionary"; id: number; version: number | null; status: "proposed" | "accepted" | "rejected"; from: string | null; to: string; scope: "all" | "video"; reason: string | null }
+  | { kind: "taste"; id: number; version: number | null; status: "proposed" | "accepted" | "rejected"; text: string; reason: string | null }
+
+export type VideoDetail = Video & { sources: string[]; assets: MediaFile[]; versions: Version[]; messages: Message[]; proposals: Proposal[] }
 
 export type Segment = { programStart: number; programEnd: number; sourceStart: number; sourceEnd: number }
 export type Word = { start: number; end: number; text: string; source: number }

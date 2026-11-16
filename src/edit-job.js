@@ -7,7 +7,7 @@
 //     context.json   source, analysis and settings for `cutroom` (src/cut.js)
 //     AGENTS.md, CLAUDE.md, taste.md, review.json, transcript.md, dictionary.md, media.md   the agent's context
 //     media/library/…, media/assets/…   files graphics.json uses, frozen with the version
-//     decisions.json, overrides.json, graphics.json, custom/*.tsx, reply.md, dictionary.json   the agent's answer
+//     decisions.json, overrides.json, graphics.json, custom/*.tsx, reply.md, dictionary.json, remember.json   the agent's answer
 //     timeline.json  kept pieces and words on program time
 //     edit.json      the recipe: source, settings, decisions, keeps, graphics (source of truth)
 //     build.json     how it was built
@@ -32,6 +32,7 @@ import { activeEntries, dictionaryMarkdown, ingestProposals, packetWithDictionar
 import { ensureModels, whisperModelId } from "./models.js";
 import { masterAudio, masterGainDb, measureLoudness, normalizeSound } from "./sound.js";
 import { checkScenes } from "./scenes.js";
+import { ingestRemember } from "./proposals.js";
 import { recordRun } from "./usage.js";
 import { listSources } from "./sources.js";
 import { ensureWaveform } from "./timeline.js";
@@ -198,6 +199,7 @@ async function writeAgentContext(video, dir, { packet, media, sounds, faces, pac
       graphics: "graphics.json",
       reply: "reply.md",
       dictionary: "dictionary.json",
+    remember: "remember.json",
     },
     decisionsTemplate: { format: DECISIONS_FORMAT, review: "review.json", keep: [], remove: [], cut: [], notes: "" },
   });
@@ -367,6 +369,8 @@ export async function runEditJob(job, { signal }) {
 
   // Words the agent found: spelled by an author comment, they correct this version too.
   const proposals = await ingestProposals(dir, { videoId: video.id, version: number, comments });
+  // Preferences the agent noticed: the author answers them in the chat.
+  const remember = await ingestRemember(dir, { videoId: video.id, version: number }).catch(() => []);
   if (proposals.active.length) {
     entries = activeEntries(video.id);
     ({ packet, applied } = packetWithDictionary(prepared.packet, entries));
@@ -470,7 +474,8 @@ export async function runEditJob(job, { signal }) {
   const dictionaryNote = [
     applied.length ? `\nСловарь: ${applied.map((item) => `«${item.from}» → «${item.to}» ${words(item.count)}`).join(", ")}.` : "",
     proposals.active.length ? `\nВ словарь по вашей правке: ${proposals.active.map((e) => `«${e.from}» → «${e.to}»`).join(", ")}.` : "",
-    proposals.proposed.length ? `\nАгент предлагает в словарь: ${proposals.proposed.map((e) => `«${e.from}» → «${e.to}»`).join(", ")}. Подтвердите в «Настройки → Распознавание речи».` : "",
+    proposals.proposed.length ? `\nАгент предлагает в словарь: ${proposals.proposed.map((e) => `«${e.from}» → «${e.to}»`).join(", ")}. Ответьте ниже.` : "",
+    remember.length ? `\nАгент предлагает запомнить в профиле вкуса: ${remember.length}. Ответьте ниже.` : "",
   ].join("");
   const summary = `Версия ${name}: ${timeline.duration.toFixed(1)} с из ${media.duration.toFixed(1)} с, вырезано ${Math.max(0, media.duration - timeline.duration).toFixed(1)} с. Распознавание: ${prepared.asr.model}.${extras}${packInfo ? ` Пакет: ${packInfo.name}.` : ""}${warnings}${layoutNote}${sceneNote}${dictionaryNote}`;
   addMessage(video.id, "agent", answer.reply || "Готово.", number);

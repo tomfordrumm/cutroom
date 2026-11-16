@@ -1,4 +1,5 @@
-import { ArrowUp, MapPin } from "lucide-react"
+import { ArrowUp, BookA, Check, MapPin, Sparkles, X } from "lucide-react"
+import { Link } from "react-router-dom"
 import { useState } from "react"
 import { toast } from "sonner"
 import { JobStatus } from "@/components/JobStatus"
@@ -7,7 +8,7 @@ import { ChatContainerContent, ChatContainerRoot } from "@/components/ui/chat-co
 import { Message, MessageContent } from "@/components/ui/message"
 import { PromptInput, PromptInputAction, PromptInputActions, PromptInputTextarea } from "@/components/ui/prompt-input"
 import { ScrollButton } from "@/components/ui/scroll-button"
-import { fmtDate, fmtTime, isActive, post, vname, type VideoDetail } from "@/lib/api"
+import { fmtDate, fmtTime, isActive, post, vname, type Proposal, type VideoDetail } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -29,11 +30,74 @@ function TimeChip({ version, at, onClick, className }: { version: number; at: nu
   )
 }
 
+/** A word for the dictionary or a line for the taste profile, answered with yes or no. */
+function ProposalCard({ videoId, proposal, onDecided }: { videoId: number; proposal: Proposal; onDecided: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const decide = async (accept: boolean) => {
+    setBusy(true)
+    try {
+      await post(`/api/videos/${videoId}/proposals/${proposal.kind}/${proposal.id}`, { accept })
+      onDecided()
+    } catch (error) {
+      toast.error((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const dictionary = proposal.kind === "dictionary"
+  const Icon = dictionary ? BookA : Sparkles
+  const done = proposal.status !== "proposed"
+  const accepted = proposal.status === "accepted"
+  const result = dictionary
+    ? accepted ? "В словаре. Сработает со следующей версии." : "Не добавлено в словарь."
+    : accepted ? "Записано в профиль вкуса." : "Не запоминаем."
+  return (
+    <div className={cn("grid gap-2 rounded-xl border p-3 text-sm [overflow-wrap:anywhere]", done ? "bg-transparent opacity-80" : "border-primary/30 bg-primary/5")}>
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Icon className="size-3.5 shrink-0" />
+        {dictionary ? `Словарь распознавания · ${proposal.scope === "all" ? "для всех роликов" : "только этот ролик"}` : "Профиль вкуса"}
+        {proposal.version != null && <span className="font-normal">· {vname(proposal.version)}</span>}
+      </div>
+      {dictionary ? (
+        <div className="font-medium">«{proposal.from}» → «{proposal.to}»</div>
+      ) : (
+        <div className="font-medium">{proposal.text}</div>
+      )}
+      {proposal.reason && <div className="text-xs text-muted-foreground">{proposal.reason}</div>}
+      {done ? (
+        <div className={cn("flex items-center gap-1.5 text-xs", accepted ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+          {accepted ? <Check className="size-3.5" /> : <X className="size-3.5" />}
+          {result}
+          {!dictionary && accepted && <Link to="/settings/style" className="underline underline-offset-2">Профиль</Link>}
+          {dictionary && <Link to="/settings/speech" className="underline underline-offset-2">Словарь</Link>}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-auto text-xs text-muted-foreground">{dictionary ? "Добавить в словарь?" : "Запомнить для следующих роликов?"}</span>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => decide(false)}>Нет</Button>
+          <Button size="sm" disabled={busy} onClick={() => decide(true)}>Да</Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function VideoChat({ video, onJump, onSent }: Props) {
   const [text, setText] = useState("")
   const [sending, setSending] = useState(false)
 
   const pending = video.messages.filter((m) => m.role === "user" && m.version == null).length
+  // Proposals go after the last message of their version, where the agent's reply is.
+  const proposals = video.proposals ?? []
+  const lastOfVersion = new Map<number, number>()
+  video.messages.forEach((m, index) => { if (m.version != null) lastOfVersion.set(m.version, index) })
+  const placed = new Set<string>()
+  const cardsAfter = (index: number) => {
+    const list = proposals.filter((p) => p.version != null && lastOfVersion.get(p.version) === index)
+    list.forEach((p) => placed.add(`${p.kind}:${p.id}`))
+    return list
+  }
+  const proposalCard = (p: Proposal) => <ProposalCard key={`${p.kind}:${p.id}`} videoId={video.id} proposal={p} onDecided={onSent} />
   const send = async () => {
     if (!text.trim() || sending) return
     setSending(true)
@@ -58,9 +122,11 @@ export function VideoChat({ video, onJump, onSent }: Props) {
               Здесь переписка с монтажёром. Правки к конкретной секунде оставляйте кнопкой «Комментарий» под видео: они появятся точками на таймлайне.
             </p>
           )}
-          {video.messages.map((m) => {
+          {video.messages.map((m, index) => {
+            const cards = cardsAfter(index)
+            const after = cards.length ? <div className="grid gap-2">{cards.map(proposalCard)}</div> : null
             if (m.role === "system") {
-              return <div key={m.id} className="px-4 text-center text-xs text-muted-foreground">{m.body}</div>
+              return <div key={m.id} className="grid gap-4"><div className="px-4 text-center text-xs text-muted-foreground">{m.body}</div>{after}</div>
             }
             const mine = m.role === "user"
             return (
@@ -82,9 +148,11 @@ export function VideoChat({ video, onJump, onSent }: Props) {
                     {m.body}
                   </MessageContent>
                 )}
+                {after && <div className="w-full">{after}</div>}
               </Message>
             )
           })}
+          {proposals.filter((p) => !placed.has(`${p.kind}:${p.id}`)).map(proposalCard)}
           {isActive(video.job) && video.job.kind === "edit" && (
             <div className="rounded-xl border border-dashed p-3"><JobStatus job={video.job} /></div>
           )}
