@@ -5,7 +5,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { addMessage, db, getJob, getSetting, getVideo, now, updateJob, updateVideo } from "./db.js";
 import { runEditJob, runFinalJob } from "./edit-job.js";
-import { ensureModels } from "./models.js";
+import { ensureModels, whisperModelId } from "./models.js";
 import { notifyVideo } from "./notify.js";
 import { jobConcurrency } from "./queue.js";
 
@@ -60,7 +60,8 @@ async function run(job) {
 async function main() {
   log("started");
   // Fetch the models early so the first edit does not wait for the download.
-  ensureModels((message) => log(message)).then(() => log("models ready")).catch((error) => log(`model download failed: ${error.message}`));
+  // The model chosen in settings; another one is fetched when the setting changes.
+  ensureModels(whisperModelId(getSetting("whisperModel")), (message) => log(message)).then(() => log("models ready")).catch((error) => log(`model download failed: ${error.message}`));
   let stopping = false;
   for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => { stopping = true; process.exit(0); });
   const running = new Set();
