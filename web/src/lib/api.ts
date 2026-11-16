@@ -67,10 +67,15 @@ export type AppState = {
   whisperModel: string
   defaultMusic: string | null
   jobConcurrency: number
+  sound: Sound
+  soundDefaults: Sound
+  soundLimits: Record<keyof Sound, [number, number]>
   maxConcurrency: number
   machine: { cpus: number; memoryGb: number; suggested: number }
   authRequired: boolean
 }
+
+export type Sound = { targetLufs: number; sfxDb: number; musicDb: number; musicPauseDb: number }
 
 export type NotifyEvent = "review" | "failed" | "final"
 export type Telegram = {

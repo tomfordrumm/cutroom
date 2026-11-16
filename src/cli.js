@@ -6,6 +6,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { buildCut, exists, loadVersion, readJson } from "./cut.js";
 import { prepareGraphics, readGraphics, renderStills, reviewGraphics } from "./graphics.js";
+import { checkScenes } from "./scenes.js";
 
 const HELP = `Инструменты монтажёра Cutroom. Запускать в папке версии.
 
@@ -80,10 +81,18 @@ async function main([command, sub, ...rest]) {
     console.log(`graphics.json в порядке: элементов ${prepared.overlays.length}, звуков ${prepared.audio.length}, субтитры ${prepared.graphics.captions ? `${prepared.graphics.captions.style}, ${prepared.graphics.captions.position}` : "нет"}. Пакет вкуса: ${prepared.pack ? `${prepared.pack.name} ${prepared.pack.version}` : "нет"}.`);
     for (const o of prepared.overlays) console.log(`  ${o.id} ${o.type}${o.component ? `/${o.component}` : ""}: ${fmt(o.programStart)}–${fmt(o.programEnd)} склейки ← ${o.start}–${o.end} исходника  «${o.label}»`);
     for (const a of prepared.audio) {
-      const where = a.type === "music" ? `${fmt(a.programStart)}–${fmt(a.programEnd)} склейки ← ${a.start}–${a.end} исходника, громкость ${a.volume}/${a.pauseVolume} (речь/пауза)` : `${fmt(a.programStart)} склейки ← ${a.at} исходника, громкость ${a.volume}`;
+      // The agent's multipliers as written; the linear levels come from the author's settings.
+      const raw = prepared.graphics.audio.find((x) => x.id === a.id) ?? {};
+      const where = a.type === "music" ? `${fmt(a.programStart)}–${fmt(a.programEnd)} склейки ← ${a.start}–${a.end} исходника, громкость ${raw.volume ?? 1}/${raw.pauseVolume ?? 1} от уровня автора (речь/пауза)` : `${fmt(a.programStart)} склейки ← ${a.at} исходника, громкость ${raw.volume ?? 1} от уровня автора`;
       console.log(`  ${a.id} ${a.type}: ${where}  ${a.file}`);
     }
     for (const warning of prepared.warnings) console.log(`  ! ${warning}`);
+    const sceneReview = await checkScenes(dir, prepared.graphics);
+    if (sceneReview.scenes.length) console.log(`\nКарта сцен: ${sceneReview.scenes.length}.`);
+    if (sceneReview.problems.length) {
+      console.log("\nКарта сцен и текст на экране — исправь:");
+      for (const problem of sceneReview.problems) console.log(`  ! ${problem}`);
+    } else if (sceneReview.scenes.length) console.log("Текст на экране не повторяет речь.");
     return;
   }
 

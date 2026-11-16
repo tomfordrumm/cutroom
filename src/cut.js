@@ -11,6 +11,7 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { packetWithDictionary } from "./dictionary-text.js";
 import { analyze, applyDecisions, buildPlan, exportPlan } from "@openroughcut/core";
+import { measureLoudness } from "./sound.js";
 import { placeUnits, placeWords, segmentsFromKeeps } from "./timeline.js";
 
 export const writeJson = (file, value) => writeFile(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -94,17 +95,25 @@ export async function buildCut(dir, { signal, onProgress = () => {}, render = tr
   const stampPath = path.join(dir, "out", "cut.json");
   const inputs = createHash("sha256").update(JSON.stringify([plan.keeps, media.width, media.height])).digest("hex");
   let rendered = false;
+  let voiceLufs = null;
   if (render) {
-    const stamp = await exists(stampPath) ? await readJson(stampPath) : null;
+    let stamp = await exists(stampPath) ? await readJson(stampPath) : null;
     if (stamp?.inputs !== inputs || !(await exists(cutPath))) {
       onProgress("Рендер склейки", 0);
       await exportPlan(plan, {
         format: "mp4", inputPath: sourcePath, outputPath: cutPath, media, projectResolution: previewResolution(media), signal,
         onProgress: ({ percent }) => onProgress(`Рендер склейки · ${percent}%`, percent),
       });
-      await writeJson(stampPath, { inputs, ...previewResolution(media) });
+      stamp = { inputs, ...previewResolution(media) };
       rendered = true;
     }
+    // The voice as recorded, after the cut: music, effects and the master gain follow it.
+    if (stamp.voiceLufs === undefined) {
+      onProgress("Измеряю громкость голоса", null);
+      stamp.voiceLufs = (await measureLoudness(cutPath, { signal }))?.lufs ?? null;
+      await writeJson(stampPath, stamp);
+    } else if (rendered) await writeJson(stampPath, stamp);
+    voiceLufs = stamp.voiceLufs;
   }
-  return { version, answer, analysis, plan, timeline, rendered, cutPath };
+  return { version, answer, analysis, plan, timeline, rendered, cutPath, voiceLufs };
 }

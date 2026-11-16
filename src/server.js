@@ -12,6 +12,7 @@ import { AGENTS, config, versionName, videoDir } from "./config.js";
 import { activeJob, addMessage, db, enqueueJob, getSetting, getVideo, now, setSetting, updateVideo } from "./db.js";
 import { bindChat, disconnectTelegram, NOTIFY_EVENTS, sendTest, setToken, telegramState, updateTelegram } from "./notify.js";
 import { isJobConcurrency, jobConcurrency, machine, MAX_CONCURRENCY } from "./queue.js";
+import { normalizeSound, SOUND_DEFAULTS, SOUND_LIMITS } from "./sound.js";
 import { addEntry, listDictionary, removeEntry, updateEntry } from "./dictionary.js";
 import { assetsDir, categoryDir, checkUpload, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME } from "./library.js";
 import { isWhisperModel, modelDownloaded, WHISPER_MODELS, whisperModelId } from "./models.js";
@@ -175,6 +176,9 @@ function stateSnapshot() {
     whisperModel: whisperModelId(getSetting("whisperModel")),
     defaultMusic: getSetting("defaultMusic", null),
     jobConcurrency: jobConcurrency(getSetting("jobConcurrency")),
+    sound: { ...SOUND_DEFAULTS, ...getSetting("sound", {}) },
+    soundDefaults: SOUND_DEFAULTS,
+    soundLimits: SOUND_LIMITS,
     maxConcurrency: MAX_CONCURRENCY,
     machine: machine(),
     authRequired: Boolean(config.password),
@@ -254,6 +258,9 @@ route("PUT", "/api/settings", async (req, res) => {
   if (body.defaultMusic !== undefined) {
     if (body.defaultMusic !== null && !(await listLibrary()).music.some((f) => f.name === body.defaultMusic)) throw new HttpError(400, "Такого трека нет в библиотеке");
     setSetting("defaultMusic", body.defaultMusic);
+  }
+  if (body.sound !== undefined) {
+    try { setSetting("sound", normalizeSound(body.sound === null ? {} : { ...getSetting("sound", {}), ...body.sound })); } catch (error) { throw new HttpError(400, error.message); }
   }
   if (body.jobConcurrency !== undefined) {
     if (!isJobConcurrency(body.jobConcurrency)) throw new HttpError(400, `Одновременно можно от 1 до ${MAX_CONCURRENCY} роликов`);

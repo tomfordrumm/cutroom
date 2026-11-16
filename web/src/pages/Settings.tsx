@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { AudioLines, Bell, Bot, Layers, LogOut, Music, Palette, type LucideIcon } from "lucide-react"
+import { AudioLines, Bell, Bot, Layers, LogOut, Music, Palette, Volume2, type LucideIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, Navigate, NavLink, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -9,6 +9,7 @@ import { Library } from "@/components/Library"
 import { ModelPicker } from "@/components/ModelPicker"
 import { PackPicker } from "@/components/PackPicker"
 import { QueueSettings } from "@/components/QueueSettings"
+import { SoundSettings } from "@/components/SoundSettings"
 import { SpeechSettings } from "@/components/SpeechSettings"
 import { TelegramSettings } from "@/components/TelegramSettings"
 import { WebTerminal } from "@/components/WebTerminal"
@@ -24,6 +25,7 @@ const SECTIONS: Section[] = [
   { id: "agent", label: "Агент", icon: Bot, description: "Кто монтирует ролики и на какой модели.", render: () => <AgentSection /> },
   { id: "style", label: "Стиль монтажа", icon: Palette, description: "Пакет вкуса задаёт оформление, профиль — ваши постоянные правила.", render: () => <StyleSection /> },
   { id: "library", label: "Библиотека", icon: Music, description: "Файлы, общие для всех роликов.", render: () => <LibrarySection /> },
+  { id: "sound", label: "Звук", icon: Volume2, description: "Громкость голоса, музыки и эффектов.", render: () => <SoundSection /> },
   { id: "speech", label: "Распознавание речи", icon: AudioLines, description: "Расшифровка, субтитры и словарь терминов.", render: () => <SpeechSection /> },
   { id: "queue", label: "Очередь монтажа", icon: Layers, description: "Сколько роликов монтировать одновременно.", render: () => <QueueSection /> },
   { id: "notifications", label: "Уведомления", icon: Bell, description: "Сообщения, когда ролик ждёт вас.", render: () => <NotificationsSection /> },
@@ -164,6 +166,14 @@ function LibrarySection() {
   return (
     <Block title="Музыка, эффекты и файлы" description="Агент видит их список и ставит по смыслу; версия хранит копию того, что использовала.">
       <Library />
+    </Block>
+  )
+}
+
+function SoundSection() {
+  return (
+    <Block title="Громкость" description="Cutroom измеряет громкость голоса после склейки и каждого звукового файла, ставит музыку и эффекты относительно голоса и выравнивает готовый ролик.">
+      <SoundSettings />
     </Block>
   )
 }

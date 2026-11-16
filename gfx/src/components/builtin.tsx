@@ -4,6 +4,7 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remo
 import { useLayout, useZoneStyle } from "../layout"
 import { clamp, useEnterExit } from "../motion"
 import type { OverlayProps } from "../types"
+import { Action } from "./Action"
 import { Clip, Picture } from "./media"
 
 const str = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback)
@@ -154,6 +155,7 @@ export const BUILTIN: Record<string, React.ComponentType<OverlayProps>> = {
   stat: Stat,
   lowerThird: LowerThird,
   callout: Callout,
+  action: Action,
   image: Picture,
   video: Clip,
 }

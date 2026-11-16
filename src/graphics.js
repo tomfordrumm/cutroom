@@ -19,12 +19,15 @@ import { facesOnProgram } from "./faces.js";
 import { versionPack } from "./packs.js";
 import { CAPTIONS_DEFAULTS, validateCaptions, validateTheme } from "./theme.js";
 import { MEDIA_MIME, resolveRef, versionVideoId } from "./library.js";
+import { measureTracks, trackGains } from "./sound.js";
 import { sourceRangeToProgram, sourceToProgram } from "./timeline.js";
 
 export const GRAPHICS_FORMAT = "cutroom-graphics-v1";
-export const OVERLAY_TYPES = ["title", "fullscreen", "list", "stat", "lowerThird", "callout", "zoom", "image", "video", "custom", "pack"];
+export const OVERLAY_TYPES = ["title", "fullscreen", "list", "stat", "lowerThird", "callout", "action", "zoom", "image", "video", "custom", "pack"];
 export const AUDIO_TYPES = ["music", "sfx"];
-// Linear volumes: the music bed under speech, the bed in pauses, a sound effect.
+// `volume` and `pauseVolume`: with sound settings frozen in the version they
+// are multipliers (≤ 1) of the author's level relative to the voice; the
+// numbers below are the linear volumes of older versions without them.
 export const AUDIO_DEFAULTS = {
   // At 0.08 a mastered track sat about 10 dB under a talking-head voice in testing; 0.05 is 4 dB lower.
   music: { volume: 0.05, pauseVolume: 0.1, fadeIn: 0.5, fadeOut: 1.5, loop: true },
@@ -76,8 +79,9 @@ function validateAudio(list, { duration, problems, media, ids }) {
     const file = checkFile(a.file, ["audio"], where, problems, media);
     if (!file) return;
     const defaults = AUDIO_DEFAULTS[a.type];
+    // Volumes stay null when not given: the level then comes from the version's sound settings.
     const level = (key, max = 1) => {
-      if (a[key] === undefined) return defaults[key];
+      if (a[key] === undefined) return ["volume", "pauseVolume"].includes(key) ? null : defaults[key];
       if (!finite(a[key]) || a[key] < 0 || a[key] > max) { problems.push(`${where}: ${key} — число от 0 до ${max}.`); return defaults[key]; }
       return a[key];
     };
@@ -150,7 +154,10 @@ export function validateGraphics(raw, { duration, custom = [], pack = null, medi
   return { format: GRAPHICS_FORMAT, theme, captions, overlays, audio };
 }
 
-const label = (o) => String(o.props.text ?? o.props.title ?? o.props.value ?? (o.props.file ? path.basename(String(o.props.file)) : null) ?? o.component ?? o.type).slice(0, 60);
+const nodeLabel = (value) => (typeof value === "string" ? value : value?.label ?? "");
+const label = (o) => String(o.type === "action"
+  ? [nodeLabel(o.props.subject), o.props.action, nodeLabel(o.props.object), nodeLabel(o.props.result)].filter(Boolean).join(" → ")
+  : o.props.text ?? o.props.title ?? o.props.value ?? (o.props.file ? path.basename(String(o.props.file)) : null) ?? o.component ?? o.type).slice(0, 60);
 
 /** Files a graphics.json uses (references), for freezing into the version. */
 export function graphicsMediaRefs(graphics) {
@@ -293,6 +300,7 @@ export async function prepareGraphics(dir, duration) {
   const fps = timelineFps(timeline);
   const { overlays, audio, warnings } = placeGraphics(graphics, timeline, fps);
   const mediaFiles = Object.fromEntries(graphicsMediaRefs(graphics).map((ref) => [ref, resolveRef(ref, media).file]));
+  const levels = await audioLevels(dir, audio, mediaFiles);
   const faces = facesOnProgram(await readJson(path.join(dir, "faces.json")).catch(() => null), timeline.segments);
   await writeJson(path.join(dir, "graphics.placed.json"), {
     fps,
@@ -300,9 +308,33 @@ export async function prepareGraphics(dir, duration) {
     overlays: overlays.map(({ id, type, component, label: text, programStart, programEnd, start, end }) => ({
       id, type, component, label: text, start: programStart, end: programEnd, sourceStart: start, sourceEnd: end,
     })),
-    audio: audio.map(({ id, type, file, programStart, programEnd }) => ({ id, type, file, start: programStart, end: programEnd })),
+    audio: audio.map(({ id, type, file, programStart, programEnd, volume, pauseVolume }) => ({ id, type, file, start: programStart, end: programEnd, volume, pauseVolume })),
+    sound: levels,
   });
-  return { graphics, timeline, fps, overlays, audio, warnings, faces, pack, mediaFiles };
+  return { graphics, timeline, fps, overlays, audio, warnings, faces, pack, mediaFiles, sound: levels };
+}
+
+/**
+ * Turns the agent's volumes into linear Remotion volumes, in place. With
+ * sound settings: relative to the measured voice and each file's loudness.
+ * Without (older versions): the linear volumes as written, defaults filled.
+ */
+async function audioLevels(dir, audio, mediaFiles) {
+  const context = await readJson(path.join(dir, "context.json")).catch(() => ({}));
+  const settings = context.sound ?? null;
+  const voiceLufs = settings ? (await readJson(path.join(dir, "out", "cut.json")).catch(() => ({}))).voiceLufs ?? null : null;
+  const loudness = settings && voiceLufs != null && audio.length
+    ? await measureTracks(dir, Object.fromEntries(audio.map((a) => [a.file, { file: mediaFiles[a.file], type: a.type }])))
+    : {};
+  for (const track of audio) {
+    const defaults = AUDIO_DEFAULTS[track.type];
+    const gains = settings && voiceLufs != null
+      ? trackGains({ type: track.type, fileLufs: loudness[track.file], voiceLufs, settings, volume: track.volume ?? 1, pauseVolume: track.pauseVolume ?? 1 })
+      : null;
+    track.volume = gains?.volume ?? track.volume ?? defaults.volume;
+    if (track.type === "music") track.pauseVolume = gains?.pauseVolume ?? track.pauseVolume ?? defaults.pauseVolume;
+  }
+  return settings ? { settings, voiceLufs, files: loudness } : null;
 }
 
 function inputProps(prepared, { videoUrl, mediaUrls = {}, width, height, isolate = null }) {

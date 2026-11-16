@@ -13,7 +13,7 @@
 //     build.json     how it was built
 //     out/cut.mp4 (no graphics), out/preview.mp4, out/report.json, out/final.mp4
 import { createHash } from "node:crypto";
-import { copyFile, cp, link, mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { analyze, createReport } from "@openroughcut/core";
 import { assertSameSource, buildReviewPacket, DECISIONS_FORMAT, sourceFingerprint } from "@openroughcut/core/agent-review.js";
@@ -30,6 +30,8 @@ import { freezeMedia, listAssets, listLibrary, mediaMarkdown, versionVideoId } f
 import { DEFAULT_PACK, resolvePack, snapshotPack, versionPack } from "./packs.js";
 import { activeEntries, dictionaryMarkdown, ingestProposals, packetWithDictionary, whisperPrompt } from "./dictionary.js";
 import { ensureModels, whisperModelId } from "./models.js";
+import { masterAudio, masterGainDb, measureLoudness, normalizeSound } from "./sound.js";
+import { checkScenes } from "./scenes.js";
 import { listSources } from "./sources.js";
 import { ensureWaveform } from "./timeline.js";
 
@@ -220,6 +222,13 @@ async function inheritPrevious(video, dir) {
   for (const name of ["decisions.json", "overrides.json", "graphics.json"]) {
     if (await exists(path.join(from, name))) await copyFile(path.join(from, name), path.join(dir, name));
   }
+  // Volumes of a version made before loudness settings were linear; here they would be multipliers.
+  const legacy = !(await readJson(path.join(from, "context.json")).catch(() => ({}))).sound;
+  const graphics = legacy ? await readJson(path.join(dir, "graphics.json")).catch(() => null) : null;
+  if (Array.isArray(graphics?.audio)) {
+    graphics.audio = graphics.audio.map(({ volume, pauseVolume, ...rest }) => rest);
+    await writeJson(path.join(dir, "graphics.json"), graphics);
+  }
   if (await exists(path.join(from, "custom"))) await cp(path.join(from, "custom"), path.join(dir, "custom"), { recursive: true });
   // Files the previous graphics used stay available even if removed from the library since.
   if (await exists(path.join(from, "media"))) await cp(path.join(from, "media"), path.join(dir, "media"), { recursive: true });
@@ -238,11 +247,6 @@ async function validateVersion(dir, packet, duration) {
   const raw = await readGraphics(dir);
   if (raw) validateGraphics(raw, { duration, custom: await customComponents(dir), pack: await versionPack(dir), media: { videoId: await versionVideoId(dir), versionDir: dir } });
   return answer;
-}
-
-async function linkOrCopy(from, to) {
-  await unlink(to).catch(() => {});
-  try { await link(from, to); } catch { await copyFile(from, to); }
 }
 
 export async function runEditJob(job, { signal }) {
@@ -284,7 +288,8 @@ export async function runEditJob(job, { signal }) {
   // The author's dictionary, frozen into this version: later changes reach the next one.
   let entries = activeEntries(video.id);
   let { packet, applied } = packetWithDictionary(prepared.packet, entries);
-  const context = { sourcePath, analysisDir: prepared.dir, settings, media, fingerprint, dictionary: entries };
+  // Loudness settings, frozen like the dictionary: a final render later sounds like this preview.
+  const context = { sourcePath, analysisDir: prepared.dir, settings, media, fingerprint, dictionary: entries, sound: normalizeSound(getSetting("sound", {})) };
   await writeJson(path.join(dir, "context.json"), context);
 
   const agent = getSetting("agent", "none");
@@ -337,10 +342,17 @@ export async function runEditJob(job, { signal }) {
         await buildCut(dir, { signal, onProgress: (message, percent) => step("render", message, percent) });
         const review = await reviewGraphics(dir, { duration: media.duration, size: previewResolution(media), onProgress: (message) => step("review", message) }).catch((error) => ({ status: "error", error }));
         if (review.status !== "fail" && review.status !== "error") passedReview = review;
-        if (review.status === "fail") {
-          const problems = review.overlays.filter((o) => o.status === "fail")
-            .map((o) => `${o.id}: ${[...new Set(o.samples.flatMap((sample) => sample.problems))].join("; ")}`).join("\n");
-          prompt = `${basePrompt}\n\nПроверка раскладки (cutroom gfx review) нашла ошибки:\n${problems}\nИсправь graphics.json или компоненты, запусти cutroom gfx review и посмотри лист кадров. Остальное не меняй. Допиши в reply.md, что исправил.`;
+        const sceneProblems = (await sceneCheck(dir, media.duration)).problems;
+        if (review.status === "fail" || sceneProblems.length) {
+          const layout = review.status === "fail" ? review.overlays.filter((o) => o.status === "fail")
+            .map((o) => `${o.id}: ${[...new Set(o.samples.flatMap((sample) => sample.problems))].join("; ")}`).join("\n") : "";
+          prompt = [
+            basePrompt,
+            layout ? `Проверка раскладки (cutroom gfx review) нашла ошибки:\n${layout}` : null,
+            sceneProblems.length ? `Карта сцен и текст на экране (cutroom gfx check):\n${sceneProblems.join("\n")}` : null,
+            "Исправь scenes.json, graphics.json или компоненты, запусти cutroom gfx check и cutroom gfx review и посмотри лист кадров. Остальное не меняй. Допиши в reply.md, что исправил.",
+          ].filter(Boolean).join("\n\n");
+          passedReview = review.status === "fail" ? null : passedReview;
           continue;
         }
       }
@@ -386,14 +398,16 @@ export async function runEditJob(job, { signal }) {
       onProgress: (message, percent) => step("graphics", percent == null ? message : `${message} · ${percent}%`, percent),
     });
   } else {
-    await linkOrCopy(cut.cutPath, path.join(dir, "out", "preview.mp4"));
+    await copyFile(cut.cutPath, path.join(dir, "out", "preview.mp4"));
   }
+  const sound = await master(path.join(dir, "out", "preview.mp4"), context.sound, cut.voiceLufs, { signal, step: (message) => step("sound", message) });
   await ensureWaveform(video.id, number).catch(() => {});
   const sourceResolution = { width: media.width, height: media.height, choice: "source" };
   const report = createReport(analysis, plan, { exportFormat: "mp4", projectResolution: sourceResolution });
   await writeJson(path.join(dir, "out", "report.json"), report);
 
   const placed = graphicsResult ? await readJson(path.join(dir, "graphics.placed.json")) : null;
+  const sceneResult = graphicsResult ? await sceneCheck(dir, media.duration) : null;
   // What actually sounds after the cut (an effect on a cut moment is dropped with a warning).
   if (placed?.audio) soundSummary = soundNote(placed.audio);
   await writeJson(path.join(dir, "edit.json"), {
@@ -411,6 +425,8 @@ export async function runEditJob(job, { signal }) {
     },
     pack: packInfo,
     graphics: graphicsResult ? { file: "graphics.json", custom: await customComponents(dir), overlays: placed.overlays.length, audio: placed.audio?.length ?? 0, media: frozenMedia, warnings: placed.warnings } : null,
+    sound,
+    scenes: sceneResult ? { count: sceneResult.scenes.length, problems: sceneResult.problems } : null,
     output: { durationSeconds: timeline.duration, removedSeconds: media.duration - timeline.duration },
   });
   // The author sees whether the graphics clear the face and captions; reuse the agent-loop check if nothing changed since.
@@ -433,9 +449,12 @@ export async function runEditJob(job, { signal }) {
     finishedAt: now(),
     seconds: Math.round((Date.now() - started) / 1000),
     preview: { path: "out/preview.mp4", ...previewSize, graphics: Boolean(graphicsResult) },
+    sound,
   });
 
-  const extras = `${graphicsResult ? ` Графика: ${graphicsResult.overlays} элементов.` : ""}${soundSummary ? ` Звук: ${soundSummary}.` : ""}`;
+  const sceneNote = sceneResult?.problems.length ? `\nКарта сцен: осталось замечаний ${sceneResult.problems.length} — ${sceneResult.problems.slice(0, 3).join("; ")}${sceneResult.problems.length > 3 ? "…" : ""}` : "";
+  const loudness = sound?.voiceLufs != null ? ` Громкость: голос ${fmtDb(sound.voiceLufs)} → ${fmtDb(sound.outputLufs ?? sound.settings.targetLufs)} LUFS.` : "";
+  const extras = `${graphicsResult ? ` Графика: ${graphicsResult.overlays} элементов.` : ""}${soundSummary ? ` Звук: ${soundSummary}.` : ""}${loudness}`;
   const warnings = placed?.warnings?.length ? `\nНе показано: ${placed.warnings.join("; ")}` : "";
   const layoutIssues = layoutReview?.overlays?.filter((o) => o.status !== "pass") ?? [];
   const layoutNote = layoutIssues.length
@@ -447,10 +466,39 @@ export async function runEditJob(job, { signal }) {
     proposals.active.length ? `\nВ словарь по вашей правке: ${proposals.active.map((e) => `«${e.from}» → «${e.to}»`).join(", ")}.` : "",
     proposals.proposed.length ? `\nАгент предлагает в словарь: ${proposals.proposed.map((e) => `«${e.from}» → «${e.to}»`).join(", ")}. Подтвердите в «Настройки → Распознавание речи».` : "",
   ].join("");
-  const summary = `Версия ${name}: ${timeline.duration.toFixed(1)} с из ${media.duration.toFixed(1)} с, вырезано ${(media.duration - timeline.duration).toFixed(1)} с. Распознавание: ${prepared.asr.model}.${extras}${packInfo ? ` Пакет: ${packInfo.name}.` : ""}${warnings}${layoutNote}${dictionaryNote}`;
+  const summary = `Версия ${name}: ${timeline.duration.toFixed(1)} с из ${media.duration.toFixed(1)} с, вырезано ${Math.max(0, media.duration - timeline.duration).toFixed(1)} с. Распознавание: ${prepared.asr.model}.${extras}${packInfo ? ` Пакет: ${packInfo.name}.` : ""}${warnings}${layoutNote}${sceneNote}${dictionaryNote}`;
   addMessage(video.id, "agent", answer.reply || "Готово.", number);
   addMessage(video.id, "system", summary, number);
   updateVideo(video.id, { stage: "review", latest_version: number });
+}
+
+/** The scene map check on the version's validated graphics; never throws. */
+async function sceneCheck(dir, duration) {
+  try {
+    const raw = await readGraphics(dir);
+    if (!raw) return { problems: [], scenes: [] };
+    const graphics = validateGraphics(raw, { duration, custom: await customComponents(dir), pack: await versionPack(dir), media: { videoId: await versionVideoId(dir), versionDir: dir } });
+    return await checkScenes(dir, graphics);
+  } catch (error) {
+    return { problems: [error.message], scenes: [] };
+  }
+}
+
+const fmtDb = (value) => value.toFixed(1).replace("-", "−").replace(".", ",");
+
+/**
+ * Brings a rendered file's voice to the author's target and limits peaks.
+ * Versions without frozen sound settings, or a recording without a
+ * measurable voice, are left as rendered.
+ */
+async function master(file, settings, voiceLufs, { signal, step = () => {} }) {
+  if (!settings) return null;
+  if (voiceLufs == null) return { settings, voiceLufs: null, gainDb: 0, outputLufs: null };
+  step("Выравниваю громкость");
+  const gainDb = masterGainDb(voiceLufs, settings);
+  await masterAudio(file, { gainDb, signal });
+  const output = await measureLoudness(file, { signal });
+  return { settings, voiceLufs, gainDb, outputLufs: output?.lufs ?? null, outputPeak: output?.peak ?? null };
 }
 
 /** Final render of an accepted version, from its edit.json: source resolution, or 1080p with graphics. */
@@ -464,6 +512,10 @@ export async function runFinalJob(job, { signal }) {
   const progress = (message, percent) => updateJob(job.id, { step: percent == null ? message : `${message} · ${percent}%`, progress: percent });
   const keeps = keepsToSeconds(edit.cut.keeps, media.frameRate);
   const finalPath = path.join(dir, "out", "final.mp4");
+  // Same settings and voice measurement as the preview, so the final sounds the same.
+  const context = await readJson(path.join(dir, "context.json")).catch(() => ({}));
+  const voiceLufs = (await readJson(path.join(dir, "out", "cut.json")).catch(() => ({}))).voiceLufs ?? null;
+  const finalSound = () => master(finalPath, context.sound ?? null, voiceLufs, { signal, step: (message) => progress(`Рендер финала: ${message.toLowerCase()}`, null) });
   if (edit.graphics && await exists(path.join(dir, "graphics.json"))) {
     // Chromium draws graphics at 1080p; a 4K pass would take many times longer.
     const size = shortSideResolution(media, 1080);
@@ -475,10 +527,12 @@ export async function runFinalJob(job, { signal }) {
     } finally {
       await unlink(basePath).catch(() => {});
     }
+    await finalSound();
     addMessage(video.id, "system", `Финал версии ${versionName(number)} с графикой готов: ${size.width}×${size.height}.`, number);
     return;
   }
   progress("Рендер финала", 0);
   await renderVideo(sourcePath, finalPath, { keeps, media, projectResolution: { width: media.width, height: media.height }, signal, onProgress: ({ percent }) => progress("Рендер финала", percent) });
+  await finalSound();
   addMessage(video.id, "system", `Финальный файл версии ${versionName(number)} готов в полном разрешении.`, number);
 }
