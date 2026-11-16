@@ -20,7 +20,7 @@ function VideoCard({ video }: { video: Video }) {
   return (
     <Link
       to={`/video/${video.id}`}
-      className="block rounded-xl border bg-card p-3.5 shadow-xs transition-colors hover:border-foreground/30"
+      className="block min-w-0 rounded-xl border bg-card p-3.5 shadow-xs [overflow-wrap:anywhere] transition-colors hover:border-foreground/30"
     >
       <div className="font-medium leading-snug">{video.title}</div>
       {video.brief && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{video.brief}</p>}

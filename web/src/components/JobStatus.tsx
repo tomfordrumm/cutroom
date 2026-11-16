@@ -10,7 +10,7 @@ export function JobStatus({ job, className }: { job: Job | null | undefined; cla
     return (
       <div className={cn("flex gap-2 text-sm text-destructive", className)}>
         <AlertCircle className="mt-0.5 size-4 shrink-0" />
-        <span className="break-words">{job.error}</span>
+        <span className="min-w-0 [overflow-wrap:anywhere]">{job.error}</span>
       </div>
     )
   }
@@ -19,7 +19,7 @@ export function JobStatus({ job, className }: { job: Job | null | undefined; cla
     <div className={cn("grid gap-2 text-sm text-muted-foreground", className)}>
       <div className="flex items-start gap-2">
         <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin" />
-        <span className="break-words">{job.status === "queued" ? "В очереди" : job.step ?? "Работаю"}</span>
+        <span className="min-w-0 [overflow-wrap:anywhere]">{job.status === "queued" ? "В очереди" : job.step ?? "Работаю"}</span>
       </div>
       {job.status === "running" && job.progress != null && <Progress value={job.progress} className="h-1" />}
     </div>
