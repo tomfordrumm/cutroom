@@ -509,7 +509,15 @@ export const isFullFrame = (o, pack) => o.type === "fullscreen" || o.props?.full
   || (pack?.replaces?.[o.type] && (pack?.fullFrame ?? []).includes(pack.replaces[o.type]));
 
 // Below this share of the previous frame's content still in place, a boundary reads as a slide change.
-const CARRY_SCORE = 0.2;
+// Real carries (morph, zoomThrough, iris, the same object changing) keep most of the frame;
+// an unmoving window whose contents are swapped scores 0.2–0.5. An error: the agent gets a second pass.
+export const CARRY_SCORE = 0.4;
+
+/** Boundaries between back-to-back full-frame scenes that read as a slide change. */
+export function weakTransitions(transitions) {
+  return (transitions ?? []).filter((t) => t.carry !== null && t.carry !== undefined && t.carry < CARRY_SCORE)
+    .map((t) => `${t.from} → ${t.to}: стык как смена слайда — от прежнего кадра остаётся ${Math.round(t.carry * 100)}% (нужно от ${Math.round(CARRY_SCORE * 100)}%). Кадры: frames/review/carry-${t.from}-a.png и -b.png. Пусть предмет переживёт границу: morph, zoomThrough, iris или тот же предмет меняет состояние на глазах; первые кадры следующей сцены рисуют конец прошлой. Или верни автора в кадр между ними.`);
+}
 
 /** Scenes of scenes.json on program frames, in order; `full` when one of their graphics covers the frame. */
 async function sceneRanges(dir, prepared) {
@@ -625,7 +633,7 @@ export async function reviewGraphics(dir, { duration, size, onProgress = () => {
     if (pairs.length) {
       const { stdout } = await promisify(execFile)(PYTHON, [VISION, "carry", ...pairs.flatMap((p) => p.files)], { maxBuffer: 8 * 1024 * 1024 });
       const scores = JSON.parse(stdout);
-      report.transitions = pairs.map((p, i) => ({ from: p.from, to: p.to, carry: scores[i], warning: scores[i] !== null && scores[i] < CARRY_SCORE ? `${p.from} → ${p.to}: на стыке из прежнего кадра остаётся ${Math.round(scores[i] * 100)}% — похоже на смену слайда. Посмотри кадры frames/review/carry-${p.from}-a.png и -b.png: что переходит в следующую сцену?` : null }));
+      report.transitions = pairs.map((p, i) => ({ from: p.from, to: p.to, carry: scores[i] }));
     }
   });
 

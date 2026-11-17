@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { placeGraphics, validateGraphics } from "../src/graphics.js";
+import { CARRY_SCORE, placeGraphics, validateGraphics, weakTransitions } from "../src/graphics.js";
 import { builtinSounds, resolveRef } from "../src/library.js";
 import { imageSize, readPack } from "../src/packs.js";
 import { critiqueProblems, reviewDrawings, reviewScenes } from "../src/scenes.js";
@@ -64,6 +64,19 @@ test("back-to-back full-frame scenes need a carry", () => {
   // One component across both scenes carries by itself.
   const shared = reviewScenes({ graphics: graphics([full("a", 0, 6)]), scenes: map([scene("a", 0, 3), scene("b", 3, 6, { overlays: ["a"] })]), speech: [] });
   assert.ok(!shared.problems.some((p) => /встык/.test(p)));
+});
+
+test("a boundary that keeps too little of the frame is a slide, whatever the component", () => {
+  assert.equal(CARRY_SCORE, 0.4);
+  const pairs = (scores) => scores.map((carry, i) => ({ from: `s${i + 1}`, to: `s${i + 2}`, carry }));
+  // Scores measured on two real edits of one source (17 November 2026).
+  const claude = weakTransitions(pairs([0.663, 0.993, 0.879, 0.185, 0.961, 0.971, 0.46, 0.982, 0.734]));
+  const codex = weakTransitions(pairs([0.374, 0.524, 0.209, 0.393, 0.452, 0.186, 0.246]));
+  assert.deepEqual(claude.map((t) => t.split(":")[0]), ["s4 → s5"]);
+  assert.equal(codex.length, 5, "one window with swapped contents reads as slides");
+  assert.match(codex[0], /смена слайда.*37%.*carry-s1-a\.png/s);
+  assert.deepEqual(weakTransitions([{ from: "a", to: "b", carry: null }]), [], "an unreadable pair is not an error");
+  assert.deepEqual(weakTransitions(undefined), []);
 });
 
 test("scenes of one length are a metronome warning", () => {

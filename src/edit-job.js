@@ -26,7 +26,7 @@ import { config, versionName, videoDir } from "./config.js";
 import { addMessage, db, getSetting, getVideo, now, updateJob, updateVideo } from "./db.js";
 import { buildCut, exists, previewResolution, readAnswer, readJson, shortSideResolution, writeJson } from "./cut.js";
 import { detectFaces, facesSummary } from "./faces.js";
-import { customComponents, graphicsMediaRefs, readGraphics, renderGraphicsVideo, reviewGraphics, safeArea, validateGraphics } from "./graphics.js";
+import { customComponents, graphicsMediaRefs, readGraphics, renderGraphicsVideo, reviewGraphics, safeArea, validateGraphics, weakTransitions } from "./graphics.js";
 import { freezeMedia, listAssets, listLibrary, mediaMarkdown, versionVideoId } from "./library.js";
 import { DEFAULT_PACK, resolvePack, snapshotPack, versionPack } from "./packs.js";
 import { activeEntries, dictionaryMarkdown, ingestProposals, packetWithDictionary, whisperPrompt } from "./dictionary.js";
@@ -435,13 +435,15 @@ export async function runEditJob(job, { signal }) {
         const review = await reviewGraphics(dir, { duration: media.duration, size: previewResolution(media), onProgress: (message) => step("review", message) }).catch((error) => ({ status: "error", error }));
         if (review.status !== "fail" && review.status !== "error") passedReview = review;
         const sceneProblems = (await sceneCheck(dir, media.duration)).problems;
-        if (review.status === "fail" || sceneProblems.length) {
+        const slides = weakTransitions(review.transitions);
+        if (review.status === "fail" || sceneProblems.length || slides.length) {
           const layout = review.status === "fail" ? review.overlays.filter((o) => o.status === "fail")
             .map((o) => `${o.id}: ${[...new Set(o.samples.flatMap((sample) => sample.problems))].join("; ")}`).join("\n") : "";
           prompt = [
             basePrompt,
             layout ? `Проверка раскладки (cutroom gfx review) нашла ошибки:\n${layout}` : null,
             sceneProblems.length ? `Карта сцен и текст на экране (cutroom gfx check):\n${sceneProblems.join("\n")}` : null,
+            slides.length ? `Стыки полноэкранных сцен (cutroom gfx review):\n${slides.join("\n")}` : null,
             "Исправь scenes.json, graphics.json или компоненты, запусти cutroom gfx check и cutroom gfx review и посмотри лист кадров. Остальное не меняй. Допиши в reply.md, что исправил.",
           ].filter(Boolean).join("\n\n");
           passedReview = review.status === "fail" ? null : passedReview;

@@ -68,6 +68,7 @@ export async function agentModels(agent) {
     return { models: [], error: `Не удалось получить список моделей Codex: ${String(error.stderr || error.message).trim().split("\n")[0]}` };
   }
 }
+export const CODEX_INSTRUCTIONS_BYTES = 262144;
 const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:\/\[\]-]{0,79}$/;
 
 export function normalizeAgentModels(value = {}) {
@@ -83,7 +84,7 @@ export function normalizeAgentModels(value = {}) {
   return result;
 }
 
-function commandFor(agent, prompt, cwd, { model = "", effort = "" } = {}) {
+export function commandFor(agent, prompt, cwd, { model = "", effort = "" } = {}) {
   if (agent === "claude") {
     const args = ["-p", prompt, "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"];
     if (model) args.push("--model", model);
@@ -91,7 +92,8 @@ function commandFor(agent, prompt, cwd, { model = "", effort = "" } = {}) {
     return ["claude", args];
   }
   if (agent === "codex") {
-    const args = ["exec", "--json", "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check", "-C", cwd];
+    // Codex loads AGENTS.md itself but stops at 32 KB by default; ours is longer and must arrive whole.
+    const args = ["exec", "--json", "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check", "-C", cwd, "-c", `project_doc_max_bytes=${CODEX_INSTRUCTIONS_BYTES}`];
     if (model) args.push("-m", model);
     if (effort) args.push("-c", `model_reasoning_effort="${effort}"`);
     return ["codex", [...args, prompt]];

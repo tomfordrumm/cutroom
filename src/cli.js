@@ -5,7 +5,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { buildCut, exists, loadVersion, readJson } from "./cut.js";
-import { prepareGraphics, readGraphics, renderIllustrationsSheet, renderMovesSheet, renderStills, reviewGraphics } from "./graphics.js";
+import { prepareGraphics, readGraphics, renderIllustrationsSheet, renderMovesSheet, renderStills, reviewGraphics, weakTransitions } from "./graphics.js";
 import { checkScenes } from "./scenes.js";
 import { checkClip, clipStills, listClips, newClip, refreshLook, renderClip, runInClip } from "./clips.js";
 import { enabledEngines } from "./engines.js";
@@ -243,12 +243,12 @@ async function main([command, sub, ...rest]) {
     }
     if (report.sheets.length) console.log(`Лист кадров по порядку элементов: ${report.sheets.join(", ")} — открой и посмотри.`);
     if (report.sceneSheets?.length) console.log(`Сцены в движении (начало, середина, конец; строка на сцену): ${report.sceneSheets.join(", ")}.`);
-    for (const t of report.transitions ?? []) if (t.warning) console.log(`  ? ${t.warning}`);
+    const slides = weakTransitions(report.transitions);
+    for (const t of slides) console.log(`ОШИБКА ${t}`);
     console.log("\nТеперь строгий критик (AGENTS.md): посмотри листы как зритель, который видит ролик впервые на телефоне, найди слабые места, исправь и запиши в critique.md.");
-    if (report.status === "fail") {
-      console.log("\nЕсть ошибки раскладки: поправь position, размеры или время элемента и запусти проверку снова.");
-      process.exitCode = 2;
-    }
+    if (report.status === "fail") console.log("\nЕсть ошибки раскладки: поправь position, размеры или время элемента и запусти проверку снова.");
+    if (slides.length) console.log("\nЕсть стыки-слайды: сделай перенос и запусти проверку снова.");
+    if (report.status === "fail" || slides.length) process.exitCode = 2;
     return;
   }
 

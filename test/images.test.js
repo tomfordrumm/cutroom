@@ -101,3 +101,12 @@ test("Codex models come from its catalog, hidden ones left out", () => {
   assert.deepEqual(models[1].efforts, ["low", "ultra"]);
   assert.equal(models[1].defaultEffort, "low");
 });
+
+test("Codex gets the whole AGENTS.md, not its default 32 KB", async () => {
+  const { commandFor, CODEX_INSTRUCTIONS_BYTES } = await import("../src/agent.js");
+  const [, args] = commandFor("codex", "go", "/tmp/v");
+  assert.ok(args.includes(`project_doc_max_bytes=${CODEX_INSTRUCTIONS_BYTES}`));
+  const { readFile: read } = await import("node:fs/promises");
+  const size = Buffer.byteLength(await read(path.join(root, "instructions", "AGENTS.md"), "utf8"));
+  assert.ok(size < CODEX_INSTRUCTIONS_BYTES / 2, `AGENTS.md ${size} bytes`);
+});
