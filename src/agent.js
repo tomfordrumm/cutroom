@@ -1,9 +1,10 @@
 // Runs the user's own editing agent (Claude Code or Codex CLI) headless in a
 // version folder. Cutroom never reads the agents' credentials; it only checks
 // whether the CLI has signed in, by the presence of its own auth file.
-import { spawn } from "node:child_process";
-import { createWriteStream, existsSync } from "node:fs";
+import { execFile, spawn } from "node:child_process";
+import { createWriteStream, existsSync, statSync } from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
 import { usageCollector } from "./agent-usage.js";
 import { config } from "./config.js";
 import { engineEnv } from "./engines.js";
@@ -23,8 +24,50 @@ export function agentStatus() {
 // a full model name; Codex takes a model name from its own list.
 export const EFFORTS = {
   claude: ["low", "medium", "high", "xhigh", "max"],
-  codex: ["minimal", "low", "medium", "high"],
+  codex: ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"],
 };
+
+const CLAUDE_MODELS = [
+  { id: "opus", label: "Opus", description: "лучшее качество" },
+  { id: "sonnet", label: "Sonnet", description: "быстрее и дешевле" },
+  { id: "haiku", label: "Haiku", description: "самый быстрый" },
+  { id: "fable", label: "Fable", description: "" },
+].map((m) => ({ ...m, efforts: EFFORTS.claude, defaultEffort: null }));
+
+// Codex publishes its model catalog for the signed-in account; it changes with
+// the account and with Codex itself, so it is read from the CLI, not hard-coded.
+let codexCatalog = null;
+export function parseCodexModels(json) {
+  const models = Array.isArray(json?.models) ? json.models : [];
+  return models
+    .filter((m) => m && typeof m.slug === "string" && m.visibility !== "hide")
+    .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99))
+    .map((m) => ({
+      id: m.slug,
+      label: m.display_name || m.slug,
+      description: m.description ?? "",
+      efforts: (m.supported_reasoning_levels ?? []).map((l) => l.effort).filter((e) => EFFORTS.codex.includes(e)),
+      defaultEffort: m.default_reasoning_level ?? null,
+    }));
+}
+
+/** Models the agent can run on: a fixed list for Claude, the account's catalog for Codex. */
+export async function agentModels(agent) {
+  if (agent === "claude") return { models: CLAUDE_MODELS, error: null };
+  if (agent !== "codex") return { models: [], error: null };
+  if (!agentStatus().codex) return { models: [], error: "Codex CLI не подключён" };
+  const auth = path.join(config.paths.home, ".codex", "auth.json");
+  const stamp = statSync(auth).mtimeMs;
+  if (codexCatalog && codexCatalog.stamp === stamp && Date.now() - codexCatalog.at < 10 * 60_000) return codexCatalog.value;
+  try {
+    const { stdout } = await promisify(execFile)("codex", ["debug", "models"], { env: { ...process.env, HOME: config.paths.home }, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 });
+    const value = { models: parseCodexModels(JSON.parse(stdout)), error: null };
+    codexCatalog = { stamp, at: Date.now(), value };
+    return value;
+  } catch (error) {
+    return { models: [], error: `Не удалось получить список моделей Codex: ${String(error.stderr || error.message).trim().split("\n")[0]}` };
+  }
+}
 const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:\/\[\]-]{0,79}$/;
 
 export function normalizeAgentModels(value = {}) {

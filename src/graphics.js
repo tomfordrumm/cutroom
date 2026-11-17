@@ -157,7 +157,13 @@ export function validateGraphics(raw, { duration, custom = [], pack = null, medi
       const alpha = o.type === "video" && file.ref.startsWith("clips/") && /\.webm$/i.test(file.ref);
       o = { ...o, props: { ...o.props, file: file.ref, ...(alpha ? { transparent: true } : {}) } };
     }
-    if (o.type === "sticker") {
+    if (o.type === "sticker" && o.props?.file !== undefined) {
+      // A picture generated for this video instead of one from the pack.
+      if (!String(o.props.file).startsWith("images/")) { problems.push(`${where}: props.file у sticker — сгенерированная картинка images/<имя>.png; иллюстрации пакета — через props.id.`); return; }
+      const file = checkFile(o.props.file, ["image"], `${where}.props`, problems, media);
+      if (!file) return;
+      o = { ...o, props: { ...o.props, file: file.ref } };
+    } else if (o.type === "sticker") {
       const known = (pack?.illustrations ?? []).map((i) => i.id);
       if (!known.length) { problems.push(`${where}: в пакете вкуса нет иллюстраций, sticker недоступен.`); return; }
       if (!known.includes(o.props?.id)) { problems.push(`${where}: props.id — id иллюстрации из illustrations.md, «${o.props?.id ?? ""}» нет.`); return; }
@@ -192,13 +198,13 @@ const nodeLabel = (value) => (typeof value === "string" ? value : value?.label ?
 const label = (o) => String(o.type === "action"
   ? [nodeLabel(o.props.subject), o.props.action, nodeLabel(o.props.object), nodeLabel(o.props.result)].filter(Boolean).join(" → ")
   : o.type === "chat" ? `${o.props.app ?? "чат"}: ${(o.props.messages ?? []).map((m) => m.text).join(" / ")}`
-  : o.type === "sticker" ? `${o.props.id}${o.props.caption ? `: ${o.props.caption}` : ""}`
+  : o.type === "sticker" ? `${o.props.id ?? o.props.file}${o.props.caption ? `: ${o.props.caption}` : ""}`
   : o.props.text ?? o.props.title ?? o.props.value ?? (o.props.file ? path.basename(String(o.props.file)) : null) ?? o.component ?? o.type).slice(0, 60);
 
 /** Files a graphics.json uses (references), for freezing into the version. */
 export function graphicsMediaRefs(graphics) {
   return [
-    ...graphics.overlays.filter((o) => o.type === "image" || o.type === "video").map((o) => o.props.file),
+    ...graphics.overlays.filter((o) => o.type === "image" || o.type === "video" || (o.type === "sticker" && o.props.file)).map((o) => o.props.file),
     ...(graphics.audio ?? []).map((a) => a.file),
   ];
 }

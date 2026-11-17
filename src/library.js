@@ -132,7 +132,9 @@ export function resolveRef(ref, { videoId, versionDir } = {}) {
   else if (parts[0] === "sounds" && parts.length === 3 && builtinSounds().roles[parts[1]]) file = path.join(SOUNDS_DIR, parts[1], parts[2]);
   // A clip the agent rendered on another engine lives in the version itself.
   else if (parts[0] === "clips" && parts.length === 2 && versionDir) file = path.join(versionDir, "clips", parts[1]);
-  else return { error: `«${value}»: ссылка начинается с library/music/, library/sfx/, library/other/, sounds/, assets/ или clips/` };
+  // So does a picture generated with `cutroom image new`.
+  else if (parts[0] === "images" && parts.length === 2 && versionDir) file = path.join(versionDir, "images", parts[1]);
+  else return { error: `«${value}»: ссылка начинается с library/music/, library/sfx/, library/other/, sounds/, assets/, clips/ или images/` };
   const kind = mediaKind(value);
   if (!kind) return { error: `«${value}»: неподдерживаемый тип файла` };
   const frozen = versionDir ? path.join(versionDir, "media", ...parts) : null;

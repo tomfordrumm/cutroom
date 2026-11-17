@@ -9,6 +9,7 @@ import { prepareGraphics, readGraphics, renderIllustrationsSheet, renderMovesShe
 import { checkScenes } from "./scenes.js";
 import { checkClip, clipStills, listClips, newClip, refreshLook, renderClip, runInClip } from "./clips.js";
 import { enabledEngines } from "./engines.js";
+import { generateImage, imagesSnapshot, listImages, REDO_LIMIT } from "./images.js";
 
 const HELP = `Инструменты монтажёра Cutroom. Запускать в папке версии.
 
@@ -34,6 +35,13 @@ const HELP = `Инструменты монтажёра Cutroom. Запуска�
   cutroom clip still <имя> <с> [с…]          кадры клипа → clips/<имя>/stills/
   cutroom clip render <имя> [--alpha]        рендер → clips/<имя>.mp4 (.webm с прозрачностью)
   cutroom clip run <имя> -- <команда…>       команда движка в папке клипа
+
+Картинки, которых нет в пакете (через Codex автора, guide/images.md):
+  cutroom image list                         сгенерированные картинки версии и лимит
+  cutroom image new <имя> --prompt "…" [--shape square|portrait|landscape]
+                      [--background transparent|scene]
+                                             картинка в стиле пакета → images/<имя>.png
+  cutroom image new <имя> --again --prompt "…"   сгенерировать её заново
 
 <t> — секунды склейки (что видит автор); s12.5 — секунды исходника.`;
 
@@ -157,6 +165,35 @@ async function main([command, sub, ...rest]) {
       return;
     }
     throw new Error(`Неизвестная команда clip ${sub}.\n\n${HELP}`);
+  }
+
+  if (command === "image") {
+    const [name, ...args] = rest;
+    const flag = (key) => { const i = args.indexOf(key); return i >= 0 ? args[i + 1] : undefined; };
+    const settings = imagesSnapshot();
+    if (sub === "list" || !sub) {
+      const images = await listImages(dir);
+      console.log(settings.available
+        ? `Генерация через Codex: ${images.length} из ${settings.limit} картинок на ролик, каждую можно переделать ${REDO_LIMIT} раза.`
+        : `Генерация недоступна: ${settings.enabled ? "Codex CLI не подключён" : "выключена в настройках"}.`);
+      for (const i of images) console.log(`  ${i.file} — ${i.width}×${i.height}, ${i.background === "scene" ? "сцена" : "без фона"}: ${i.prompt}`);
+      return;
+    }
+    if (sub !== "new") throw new Error(`Неизвестная команда image ${sub}.\n\n${HELP}`);
+    if (!name) throw new Error("Укажите имя картинки.");
+    const entry = await generateImage(dir, name, {
+      prompt: flag("--prompt"),
+      shape: flag("--shape") ?? "square",
+      background: flag("--background") ?? "transparent",
+      again: args.includes("--again"),
+      onProgress: (message) => process.stderr.write(`${message}…\n`),
+    });
+    console.log(`Готово: ${entry.file}, ${entry.width}×${entry.height}, ${entry.seconds} с. Открой файл и посмотри: подходит ли к стилю и смыслу сцены.`);
+    console.log(entry.background === "scene"
+      ? `В graphics.json: { "type": "image", "start": …, "end": …, "props": { "file": "${entry.file}" } }.`
+      : `В graphics.json: { "type": "sticker", "start": …, "end": …, "props": { "file": "${entry.file}" } } — как иллюстрация пакета, с подписью caption по желанию.`);
+    console.log("Запиши в reply.md, что картинка сгенерирована и зачем.");
+    return;
   }
 
   if (command === "gfx" && sub === "moves") {

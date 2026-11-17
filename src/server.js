@@ -6,7 +6,8 @@ import { mkdir, readdir, readFile, rename, rm, stat, unlink, writeFile } from "n
 import http from "node:http";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import { agentStatus, AGENT_LABELS, EFFORTS, normalizeAgentModels } from "./agent.js";
+import { imagesSnapshot, setImageSettings } from "./images.js";
+import { agentModels, agentStatus, AGENT_LABELS, EFFORTS, normalizeAgentModels } from "./agent.js";
 import { DEFAULT_PACK, installPackZip, listPacks, packSummary, removePack, resolvePack } from "./packs.js";
 import { AGENTS, config, versionName, videoDir } from "./config.js";
 import { activeJob, addMessage, db, enqueueJob, getSetting, getVideo, now, setSetting, updateVideo } from "./db.js";
@@ -325,6 +326,15 @@ route("DELETE", "/api/packs/:id", async (req, res, { params }) => {
 });
 
 // Clip engines: HyperFrames ships in the image, onetake is installed by the author after reading its licence.
+route("GET", "/api/images", async (req, res) => send(res, 200, imagesSnapshot()));
+route("PUT", "/api/images", async (req, res) => {
+  const body = await readBody(req);
+  try { send(res, 200, setImageSettings({ enabled: body.enabled, limit: body.limit })); } catch (error) { throw new HttpError(400, error.message); }
+});
+route("GET", "/api/agents/:agent/models", async (req, res, { params }) => {
+  if (!(params.agent in EFFORTS)) throw new HttpError(404, "Неизвестный агент");
+  send(res, 200, await agentModels(params.agent));
+});
 route("GET", "/api/engines", async (req, res) => send(res, 200, enginesSnapshot()));
 route("PUT", "/api/engines/:id", async (req, res, { params }) => {
   const body = await readBody(req);

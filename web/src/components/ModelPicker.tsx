@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useAppState } from "@/App"
@@ -6,23 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { put } from "@/lib/api"
+import { api, put, type AgentModels } from "@/lib/api"
 
 const DEFAULT = "__default"
 const CUSTOM = "__custom"
 
-const PRESETS: Record<"claude" | "codex", { value: string; label: string }[]> = {
-  claude: [
-    { value: "opus", label: "Opus — лучшее качество" },
-    { value: "sonnet", label: "Sonnet — быстрее и дешевле" },
-    { value: "haiku", label: "Haiku — самый быстрый" },
-    { value: "fable", label: "Fable" },
-  ],
-  codex: [],
-}
-
 const EFFORT_LABELS: Record<string, string> = {
-  minimal: "Минимальный", low: "Низкий", medium: "Средний", high: "Высокий", xhigh: "Очень высокий", max: "Максимальный",
+  minimal: "Минимальный", low: "Низкий", medium: "Средний", high: "Высокий", xhigh: "Очень высокий", max: "Максимальный", ultra: "Ультра — с делегированием",
 }
 
 /** Model and reasoning effort for the selected agent; empty means the CLI's default for the account. */
@@ -31,18 +21,28 @@ export function ModelPicker() {
   const queryClient = useQueryClient()
   const agent = state?.agent
   const current = agent && agent !== "none" ? state?.agentModels[agent] : undefined
-  const presets = agent && agent !== "none" ? PRESETS[agent] : []
+  // Claude has a fixed list of aliases; Codex lists the models of the signed-in account.
+  const catalog = useQuery({
+    queryKey: ["agent-models", agent],
+    queryFn: () => api<AgentModels>(`/api/agents/${agent}/models`),
+    enabled: Boolean(agent && agent !== "none" && state?.agentStatus[agent]),
+    staleTime: 5 * 60_000,
+  })
+  const presets = catalog.data?.models ?? []
   const [choice, setChoice] = useState(DEFAULT)
   const [custom, setCustom] = useState("")
 
   useEffect(() => {
     const model = current?.model ?? ""
     if (!model) setChoice(DEFAULT)
-    else if (presets.some((p) => p.value === model)) setChoice(model)
+    else if (presets.some((p) => p.id === model)) setChoice(model)
     else { setChoice(CUSTOM); setCustom(model) }
-  }, [agent, current?.model]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agent, current?.model, presets.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!agent || agent === "none" || !current) return null
+  const selected = presets.find((p) => p.id === current.model)
+  // A model from the catalog has its own reasoning levels; otherwise every level the CLI knows.
+  const efforts = selected?.efforts.length ? selected.efforts : state?.efforts[agent] ?? []
 
   const save = async (entry: { model?: string; effort?: string }) => {
     try {
@@ -67,10 +67,12 @@ export function ModelPicker() {
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value={DEFAULT}>По умолчанию аккаунта</SelectItem>
-            {presets.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+            {presets.map((p) => <SelectItem key={p.id} value={p.id}>{p.description ? `${p.label} — ${p.description}` : p.label}</SelectItem>)}
             <SelectItem value={CUSTOM}>Указать название…</SelectItem>
           </SelectContent>
         </Select>
+        {catalog.isLoading && <p className="text-xs text-muted-foreground">Загружаю список моделей…</p>}
+        {catalog.data?.error && <p className="text-xs text-destructive">{catalog.data.error}</p>}
         {choice === CUSTOM && (
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); save({ model: custom.trim() }) }}>
             <Input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder={agent === "claude" ? "claude-opus-5-5" : "название модели Codex"} />
@@ -84,7 +86,7 @@ export function ModelPicker() {
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value={DEFAULT}>По умолчанию</SelectItem>
-            {state?.efforts[agent].map((e) => <SelectItem key={e} value={e}>{EFFORT_LABELS[e] ?? e}</SelectItem>)}
+            {efforts.map((e) => <SelectItem key={e} value={e}>{EFFORT_LABELS[e] ?? e}{selected?.defaultEffort === e ? " · по умолчанию модели" : ""}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>

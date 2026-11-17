@@ -20,6 +20,7 @@ import { assertSameSource, buildReviewPacket, DECISIONS_FORMAT, sourceFingerprin
 import { LAST_TAKE_DUPLICATE_MODE } from "@openroughcut/core/duplicate-modes.js";
 import { probeMedia } from "@openroughcut/core/media.js";
 import { keepsToSeconds, renderVideo } from "@openroughcut/core/render-video.js";
+import { imagesSnapshot } from "./images.js";
 import { agentStatus, AGENT_LABELS, normalizeAgentModels, runAgent } from "./agent.js";
 import { config, versionName, videoDir } from "./config.js";
 import { addMessage, db, getSetting, getVideo, now, updateJob, updateVideo } from "./db.js";
@@ -223,9 +224,15 @@ async function writeEngineContext(dir) {
 }
 
 /** The pack's ready pictures, by group, for the agent. */
+function generatedMarkdown() {
+  const images = imagesSnapshot();
+  if (!images.available) return ["## Если нужной картинки нет", "", "Генерация картинок в этом Cutroom недоступна: бери иллюстрации пакета, интерфейс из набора или материалы автора.", ""];
+  return ["## Если нужной картинки нет", "", `Можно сгенерировать: \`cutroom image new <имя> --prompt "…"\` — до ${images.limit} картинок на ролик, в стиле пакета. Сначала ищи здесь; когда и как генерировать — \`guide/images.md\`.`, ""];
+}
+
 function illustrationsMarkdown(pack) {
   const items = pack?.illustrations ?? [];
-  if (!items.length) return "# Иллюстрации\n\nВ пакете вкуса нет готовых иллюстраций.\n";
+  if (!items.length) return ["# Иллюстрации", "", "В пакете вкуса нет готовых иллюстраций.", "", ...generatedMarkdown()].join("\n");
   const lines = ["# Иллюстрации пакета", "", `${pack.illustrationsInfo?.style ? `${pack.illustrationsInfo.style}. ` : ""}Ставь их встроенным элементом \`sticker\` (\`props.id\`) или в своём компоненте: \`<Illustration id="…" size={…} />\` из модуля \`cutroom\`. Посмотреть картинки: \`cutroom gfx illustrations\` или файлы в \`pack/\`.`, ""];
   for (const group of [...new Set(items.map((i) => i.group ?? "прочее"))]) {
     lines.push(`## ${group}`, "");
@@ -233,6 +240,7 @@ function illustrationsMarkdown(pack) {
     lines.push("");
   }
   if (pack.illustrationsInfo?.license) lines.push(`Лицензия: ${pack.illustrationsInfo.license}.`, "");
+  lines.push(...generatedMarkdown());
   return lines.join("\n");
 }
 
@@ -308,6 +316,8 @@ async function inheritPrevious(video, dir) {
   if (await exists(path.join(from, "custom"))) await cp(path.join(from, "custom"), path.join(dir, "custom"), { recursive: true });
   // Clips on other engines: their projects and renders, so graphics.json still finds them.
   if (await exists(path.join(from, "clips"))) await cp(path.join(from, "clips"), path.join(dir, "clips"), { recursive: true });
+  // Generated pictures and their record: the limit counts per video, not per version.
+  if (await exists(path.join(from, "images"))) await cp(path.join(from, "images"), path.join(dir, "images"), { recursive: true, filter: (file) => !path.basename(file).startsWith(".work-") });
   // Files the previous graphics used stay available even if removed from the library since.
   if (await exists(path.join(from, "media"))) await cp(path.join(from, "media"), path.join(dir, "media"), { recursive: true });
 }

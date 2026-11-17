@@ -1,7 +1,7 @@
 // Built-in scene elements on the interface kit: a ready picture from the
 // pack ("sticker") and a chat with a typed question and an answer ("chat").
 import React from "react"
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion"
+import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion"
 import { ChatWindow, chatAt, Illustration, type ChatScriptLine, type Tone } from "../kit"
 import { useLayout, useOverlay, useZoneStyle, zoneFor, type Placement } from "../layout"
 import { clamp } from "../motion"
@@ -23,7 +23,9 @@ export function Sticker({ props, theme, u }: OverlayProps) {
   const layout = useLayout()
   const overlay = useOverlay()
   const id = String(props.id ?? "")
-  const item = ILLUSTRATIONS[id]
+  // A pack illustration by id, or a picture generated for this video (props.src, square box).
+  const generated = !ILLUSTRATIONS[id] && typeof props.src === "string" && props.src ? { src: props.src, width: 1, height: 1 } : null
+  const item = ILLUSTRATIONS[id] ?? generated
   const placement = (PLACEMENTS.includes(String(props.position)) ? props.position : "auto") as Placement
   const zone = zoneFor(layout, placement, overlay?.from ?? 0, overlay?.to ?? 0)
   const caption = typeof props.caption === "string" ? props.caption : ""
@@ -47,7 +49,7 @@ export function Sticker({ props, theme, u }: OverlayProps) {
   return (
     <div style={{ ...position, opacity: Math.min(motion.opacity, out.opacity) }}>
       <div style={{ transform: `${motion.transform} ${out.transform}` }}>
-        <Illustration id={id} size={size} />
+        {generated ? <Img src={generated.src} style={{ width: box.w, height: box.h, objectFit: "contain", display: "block" }} /> : <Illustration id={id} size={size} />}
       </div>
       {caption && <div style={{ marginTop: 18 * u, padding: `${10 * u}px ${22 * u}px`, borderRadius: 999, background: theme.card, color: theme.cardForeground, fontFamily: `"${theme.displayFont}", sans-serif`, fontSize: 36 * u, fontWeight: 800, textAlign: "center" }}>{caption}</div>}
     </div>

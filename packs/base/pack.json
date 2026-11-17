@@ -2,11 +2,12 @@
   "format": "cutroom-pack-v1",
   "id": "base",
   "name": "Базовый",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "cutroom": 1,
   "description": "Плотный разговорный монтаж для Shorts, Reels и TikTok: крупные субтитры по словам, акценты наездами, четыре стиля графики и библиотека объёмных иллюстраций предметов и людей.",
   "author": "Cutroom",
   "license": "MIT; шрифты Montserrat, Manrope, PT Serif, Unbounded — SIL OFL 1.1; иллюстрации Fluent Emoji 3D — MIT, © Microsoft",
+  "imageStyle": "3D icon in the style of Microsoft Fluent Emoji 3D: soft rounded volumes, smooth matte-glossy materials, gentle gradients, soft studio light from the top left, subtle soft shadow on the object itself, no outlines, friendly simplified proportions, bright clean colours",
   "theme": {
     "accent": "#FFD84D",
     "accentForeground": "#111111",

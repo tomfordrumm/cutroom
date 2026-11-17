@@ -234,3 +234,7 @@ export function fmtTokens(value: number) {
 }
 /** "$1,31 · 1,5 млн токенов" or tokens only when no cost was reported. */
 export const fmtUsage = (u: Usage) => [u.costUsd != null ? fmtUsd(u.costUsd) : null, `${fmtTokens(u.tokens)} токенов`].filter(Boolean).join(" · ")
+
+export type AgentModel = { id: string; label: string; description: string; efforts: string[]; defaultEffort: string | null }
+export type AgentModels = { models: AgentModel[]; error: string | null }
+export type ImageGenerator = { generator: "codex"; codexSignedIn: boolean; enabled: boolean; available: boolean; limit: number; limits: { min: number; max: number; default: number } }

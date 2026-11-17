@@ -150,6 +150,9 @@ export async function readPack(dir) {
     else fullFrame.push(name);
   }
   const { looks, defaultLook } = readLooks(manifest, problems);
+  // How generated pictures should look in this pack: a style line for the image generator.
+  const imageStyle = manifest.imageStyle === undefined ? "" : String(manifest.imageStyle).trim();
+  if (imageStyle.length > 600) problems.push("imageStyle: описание стиля картинок до 600 символов.");
   const illustrationSet = await readIllustrations(dir, problems);
   const illustrations = Array.isArray(illustrationSet) ? [] : illustrationSet.items;
   const instructions = (await readdir(path.join(dir, "instructions")).catch(() => [])).filter((name) => name.endsWith(".md")).sort();
@@ -171,7 +174,7 @@ export async function readPack(dir) {
     author: String(manifest.author ?? ""),
     license: String(manifest.license ?? ""),
     theme, captions, replaces, fonts, components, fullFrame, instructions, examples,
-    looks, defaultLook, illustrations,
+    looks, defaultLook, illustrations, imageStyle,
     illustrationsInfo: Array.isArray(illustrationSet) ? null : { license: illustrationSet.license, style: illustrationSet.style },
     dir,
   };
