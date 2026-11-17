@@ -5,6 +5,9 @@
 //   <pack>/components/*.tsx     Remotion components: type "pack" or replacements of built-ins
 //   <pack>/fonts/*              font files listed in pack.json
 //   <pack>/assets/*             images the components import ("../assets/x.png")
+//   <pack>/illustrations.json   ready pictures of things and characters, by id
+//                               (files in illustrations/ or assets/), drawn by the
+//                               built-in "sticker" and <Illustration> in components
 //   <pack>/examples/*           reference stills for the agent (optional)
 //
 // Built-in packs ship in the image (packs/), installed ones live in /data/packs.
@@ -26,6 +29,75 @@ const ID = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const COMPONENT = /^[A-Z][A-Za-z0-9]{0,47}$/;
 const MAX_PACK_BYTES = 200 * 1024 * 1024;
 const FONT_FILE = /\.(woff2?|ttf|otf)$/i;
+const LOOK_ID = /^[a-z][a-z0-9-]{0,23}$/;
+const ILLUSTRATION_ID = /^[a-z0-9][a-z0-9-]{0,47}$/;
+const IMAGE_FILE = /^(illustrations|assets)\/[^\0]+\.(png|webp|jpe?g)$/i;
+export const ILLUSTRATIONS_FORMAT = "cutroom-illustrations-v1";
+
+/** Pixel size of a PNG, JPEG or WebP from its header; null if unknown. */
+export async function imageSize(file) {
+  const data = await readFile(file).catch(() => null);
+  if (!data) return null;
+  if (data.length > 24 && data.readUInt32BE(0) === 0x89504e47) return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+  if (data.length > 30 && data.toString("ascii", 0, 4) === "RIFF" && data.toString("ascii", 8, 12) === "WEBP") {
+    const chunk = data.toString("ascii", 12, 16);
+    if (chunk === "VP8X") return { width: 1 + data.readUIntLE(24, 3), height: 1 + data.readUIntLE(27, 3) };
+    if (chunk === "VP8 ") return { width: data.readUInt16LE(26) & 0x3fff, height: data.readUInt16LE(28) & 0x3fff };
+    if (chunk === "VP8L") { const b = data.readUInt32LE(21); return { width: 1 + (b & 0x3fff), height: 1 + ((b >> 14) & 0x3fff) }; }
+  }
+  if (data[0] === 0xff && data[1] === 0xd8) {
+    for (let i = 2; i + 9 < data.length;) {
+      if (data[i] !== 0xff) { i++; continue; }
+      const marker = data[i + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) return { width: data.readUInt16BE(i + 7), height: data.readUInt16BE(i + 5) };
+      i += 2 + data.readUInt16BE(i + 2);
+    }
+  }
+  return null;
+}
+
+/** Named looks of a pack: { id: { name, theme } }; the default one first. */
+function readLooks(manifest, problems) {
+  const looks = {};
+  if (manifest.looks === undefined) return { looks, defaultLook: null };
+  if (!manifest.looks || typeof manifest.looks !== "object" || Array.isArray(manifest.looks)) { problems.push("looks: объект { id: { name, theme } }."); return { looks, defaultLook: null }; }
+  for (const [id, look] of Object.entries(manifest.looks)) {
+    if (!LOOK_ID.test(id)) { problems.push(`looks.${id}: id латиницей в нижнем регистре, до 24 символов.`); continue; }
+    if (typeof look?.name !== "string" || !look.name.trim()) { problems.push(`looks.${id}.name: название стиля.`); continue; }
+    looks[id] = { name: look.name.trim(), description: String(look.description ?? "").trim(), theme: validateTheme(look.theme, problems, `looks.${id}.theme`) };
+  }
+  const ids = Object.keys(looks);
+  let defaultLook = manifest.defaultLook ?? ids[0] ?? null;
+  if (defaultLook !== null && !looks[defaultLook]) { problems.push(`defaultLook: нет стиля «${defaultLook}» (есть ${ids.join(", ")}).`); defaultLook = ids[0] ?? null; }
+  return { looks, defaultLook };
+}
+
+/** illustrations.json: ready pictures, each with an id, a file and what it shows. */
+async function readIllustrations(dir, problems) {
+  let raw;
+  try { raw = JSON.parse(await readFile(path.join(dir, "illustrations.json"), "utf8")); } catch (error) {
+    if (error.code === "ENOENT") return [];
+    problems.push(`illustrations.json не читается: ${error.message}`);
+    return [];
+  }
+  if (raw?.format !== ILLUSTRATIONS_FORMAT || !Array.isArray(raw.items)) { problems.push(`illustrations.json: format "${ILLUSTRATIONS_FORMAT}" и массив items.`); return []; }
+  const result = [];
+  const ids = new Set();
+  for (const [i, item] of raw.items.entries()) {
+    const where = `illustrations.json items[${i}]${item?.id ? ` (${item.id})` : ""}`;
+    if (!ILLUSTRATION_ID.test(String(item?.id ?? ""))) { problems.push(`${where}: id латиницей в нижнем регистре, цифры и дефис.`); continue; }
+    if (ids.has(item.id)) { problems.push(`${where}: id повторяется.`); continue; }
+    const file = String(item.file ?? "");
+    if (!IMAGE_FILE.test(file) || file.includes("..")) { problems.push(`${where}: file — png, webp или jpg в illustrations/ или assets/.`); continue; }
+    const size = Number(item.width) > 0 && Number(item.height) > 0 ? { width: Number(item.width), height: Number(item.height) } : await imageSize(path.join(dir, file));
+    if (!size) { problems.push(`${where}: нет файла ${file} или не удаётся прочитать размер.`); continue; }
+    if (typeof item.description !== "string" || !item.description.trim()) { problems.push(`${where}: description — что изображено, для агента.`); continue; }
+    ids.add(item.id);
+    const anchor = item.anchor && Number.isFinite(Number(item.anchor.x)) && Number.isFinite(Number(item.anchor.y)) ? { x: Number(item.anchor.x), y: Number(item.anchor.y) } : null;
+    result.push({ id: item.id, file, ...size, description: item.description.trim(), group: String(item.group ?? "").trim() || null, ...(anchor ? { anchor } : {}) });
+  }
+  return { items: result, license: String(raw.license ?? ""), style: String(raw.style ?? "") };
+}
 
 export const packDirs = () => ({ builtin: path.join(config.root, "packs"), installed: path.join(config.data, "packs") });
 
@@ -77,6 +149,9 @@ export async function readPack(dir) {
     if (!components.includes(name)) problems.push(`fullFrame: нет components/${name}.tsx.`);
     else fullFrame.push(name);
   }
+  const { looks, defaultLook } = readLooks(manifest, problems);
+  const illustrationSet = await readIllustrations(dir, problems);
+  const illustrations = Array.isArray(illustrationSet) ? [] : illustrationSet.items;
   const instructions = (await readdir(path.join(dir, "instructions")).catch(() => [])).filter((name) => name.endsWith(".md")).sort();
   if (!instructions.includes("README.md")) problems.push("instructions/README.md: правила вкуса для агента обязательны.");
   const examples = (await readdir(path.join(dir, "examples")).catch(() => [])).filter((name) => /\.(png|jpe?g|webp|mp4)$/i.test(name));
@@ -96,6 +171,8 @@ export async function readPack(dir) {
     author: String(manifest.author ?? ""),
     license: String(manifest.license ?? ""),
     theme, captions, replaces, fonts, components, fullFrame, instructions, examples,
+    looks, defaultLook, illustrations,
+    illustrationsInfo: Array.isArray(illustrationSet) ? null : { license: illustrationSet.license, style: illustrationSet.style },
     dir,
   };
 }

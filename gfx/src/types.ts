@@ -6,10 +6,18 @@ export type Theme = {
   accent: string
   /** Text drawn on the accent colour. */
   accentForeground: string
+  /** A rare partner of the accent: a second state, the "after" of a comparison. */
+  accent2: string
   /** Full-screen graphics background. */
   background: string
+  /** A second ground: the far plane, a well under cards. */
+  deep: string
   /** Text on the background. */
   foreground: string
+  /** Secondary text and labels on the background. */
+  mute: string
+  /** Hairlines, card edges, dividers. */
+  line: string
   /** Cards over the video (titles, lists). */
   card: string
   cardForeground: string
@@ -24,8 +32,12 @@ export type Theme = {
 export const DEFAULT_THEME: Theme = {
   accent: "#22c55e",
   accentForeground: "#0a0a0a",
+  accent2: "#60a5fa",
   background: "#0a0a0a",
+  deep: "#050505",
   foreground: "#fafafa",
+  mute: "#a1a1aa",
+  line: "#27272a",
   card: "#ffffff",
   cardForeground: "#0a0a0a",
   radius: 28,

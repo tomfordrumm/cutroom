@@ -1,0 +1,1177 @@
+{
+ "format": "cutroom-illustrations-v1",
+ "style": "объёмные 3D-иконки в одном стиле (Microsoft Fluent Emoji 3D), 256×256, прозрачный фон",
+ "license": "MIT, © Microsoft Corporation — https://github.com/microsoft/fluentui-emoji",
+ "items": [
+  {
+   "id": "robot",
+   "file": "illustrations/robot.png",
+   "description": "робот, ИИ-помощник, нейросеть",
+   "group": "люди"
+  },
+  {
+   "id": "brain",
+   "file": "illustrations/brain.png",
+   "description": "мозг, мышление, память, интеллект",
+   "group": "люди"
+  },
+  {
+   "id": "man-technologist",
+   "file": "illustrations/man-technologist.png",
+   "description": "разработчик, человек за ноутбуком",
+   "group": "люди"
+  },
+  {
+   "id": "woman-technologist",
+   "file": "illustrations/woman-technologist.png",
+   "description": "разработчица, человек за ноутбуком",
+   "group": "люди"
+  },
+  {
+   "id": "student",
+   "file": "illustrations/student.png",
+   "description": "ученик, студент",
+   "group": "люди"
+  },
+  {
+   "id": "teacher",
+   "file": "illustrations/teacher.png",
+   "description": "учитель, преподаватель",
+   "group": "люди"
+  },
+  {
+   "id": "office-worker",
+   "file": "illustrations/office-worker.png",
+   "description": "офисный работник, сотрудник",
+   "group": "люди"
+  },
+  {
+   "id": "person-raising-hand",
+   "file": "illustrations/person-raising-hand.png",
+   "description": "человек поднимает руку, вопрос, «я»",
+   "group": "люди"
+  },
+  {
+   "id": "person-shrugging",
+   "file": "illustrations/person-shrugging.png",
+   "description": "человек пожимает плечами, не знаю",
+   "group": "люди"
+  },
+  {
+   "id": "person-facepalming",
+   "file": "illustrations/person-facepalming.png",
+   "description": "рука-лицо, досада, глупая ошибка",
+   "group": "люди"
+  },
+  {
+   "id": "person-tipping-hand",
+   "file": "illustrations/person-tipping-hand.png",
+   "description": "человек объясняет, «вот так»",
+   "group": "люди"
+  },
+  {
+   "id": "person-gesturing-ok",
+   "file": "illustrations/person-gesturing-ok.png",
+   "description": "человек показывает «окей», согласие",
+   "group": "люди"
+  },
+  {
+   "id": "person-gesturing-no",
+   "file": "illustrations/person-gesturing-no.png",
+   "description": "человек показывает «нет», запрет",
+   "group": "люди"
+  },
+  {
+   "id": "detective",
+   "file": "illustrations/detective.png",
+   "description": "детектив, поиск, расследование",
+   "group": "люди"
+  },
+  {
+   "id": "ninja",
+   "file": "illustrations/ninja.png",
+   "description": "ниндзя, скрытно, мастерски",
+   "group": "люди"
+  },
+  {
+   "id": "thinking-face",
+   "file": "illustrations/thinking-face.png",
+   "description": "думает, сомнение, вопрос",
+   "group": "эмоции"
+  },
+  {
+   "id": "exploding-head",
+   "file": "illustrations/exploding-head.png",
+   "description": "взрыв мозга, «вау», шок",
+   "group": "эмоции"
+  },
+  {
+   "id": "face-with-monocle",
+   "file": "illustrations/face-with-monocle.png",
+   "description": "внимательно изучает, проверка",
+   "group": "эмоции"
+  },
+  {
+   "id": "star-struck",
+   "file": "illustrations/star-struck.png",
+   "description": "восторг, звёзды в глазах",
+   "group": "эмоции"
+  },
+  {
+   "id": "nerd-face",
+   "file": "illustrations/nerd-face.png",
+   "description": "ботаник, умник",
+   "group": "эмоции"
+  },
+  {
+   "id": "smiling-face-with-sunglasses",
+   "file": "illustrations/smiling-face-with-sunglasses.png",
+   "description": "круто, уверенно",
+   "group": "эмоции"
+  },
+  {
+   "id": "grinning-face-with-sweat",
+   "file": "illustrations/grinning-face-with-sweat.png",
+   "description": "неловко, пронесло",
+   "group": "эмоции"
+  },
+  {
+   "id": "face-screaming-in-fear",
+   "file": "illustrations/face-screaming-in-fear.png",
+   "description": "ужас, паника",
+   "group": "эмоции"
+  },
+  {
+   "id": "sleeping-face",
+   "file": "illustrations/sleeping-face.png",
+   "description": "скучно, спит",
+   "group": "эмоции"
+  },
+  {
+   "id": "partying-face",
+   "file": "illustrations/partying-face.png",
+   "description": "праздник, успех",
+   "group": "эмоции"
+  },
+  {
+   "id": "neutral-face",
+   "file": "illustrations/neutral-face.png",
+   "description": "без эмоций, «ну такое»",
+   "group": "эмоции"
+  },
+  {
+   "id": "pleading-face",
+   "file": "illustrations/pleading-face.png",
+   "description": "просьба, жалобно",
+   "group": "эмоции"
+  },
+  {
+   "id": "face-with-rolling-eyes",
+   "file": "illustrations/face-with-rolling-eyes.png",
+   "description": "закатил глаза, раздражение",
+   "group": "эмоции"
+  },
+  {
+   "id": "zipper-mouth-face",
+   "file": "illustrations/zipper-mouth-face.png",
+   "description": "молчит, секрет",
+   "group": "эмоции"
+  },
+  {
+   "id": "money-mouth-face",
+   "file": "illustrations/money-mouth-face.png",
+   "description": "деньги, заработок",
+   "group": "эмоции"
+  },
+  {
+   "id": "shushing-face",
+   "file": "illustrations/shushing-face.png",
+   "description": "тихо, секрет",
+   "group": "эмоции"
+  },
+  {
+   "id": "face-with-spiral-eyes",
+   "file": "illustrations/face-with-spiral-eyes.png",
+   "description": "голова кругом, запутался",
+   "group": "эмоции"
+  },
+  {
+   "id": "yawning-face",
+   "file": "illustrations/yawning-face.png",
+   "description": "скучно, устал",
+   "group": "эмоции"
+  },
+  {
+   "id": "ghost",
+   "file": "illustrations/ghost.png",
+   "description": "призрак, исчез, игнор",
+   "group": "люди"
+  },
+  {
+   "id": "alien-monster",
+   "file": "illustrations/alien-monster.png",
+   "description": "пришелец, странное, игровой персонаж",
+   "group": "люди"
+  },
+  {
+   "id": "eyes",
+   "file": "illustrations/eyes.png",
+   "description": "смотрит, внимание",
+   "group": "эмоции"
+  },
+  {
+   "id": "waving-hand",
+   "file": "illustrations/waving-hand.png",
+   "description": "привет, пока",
+   "group": "руки"
+  },
+  {
+   "id": "thumbs-up",
+   "file": "illustrations/thumbs-up.png",
+   "description": "нравится, одобрение",
+   "group": "руки"
+  },
+  {
+   "id": "thumbs-down",
+   "file": "illustrations/thumbs-down.png",
+   "description": "не нравится, плохо",
+   "group": "руки"
+  },
+  {
+   "id": "clapping-hands",
+   "file": "illustrations/clapping-hands.png",
+   "description": "аплодисменты, молодец",
+   "group": "руки"
+  },
+  {
+   "id": "folded-hands",
+   "file": "illustrations/folded-hands.png",
+   "description": "пожалуйста, спасибо",
+   "group": "руки"
+  },
+  {
+   "id": "raised-hand",
+   "file": "illustrations/raised-hand.png",
+   "description": "стоп, рука поднята",
+   "group": "руки"
+  },
+  {
+   "id": "backhand-index-pointing-right",
+   "file": "illustrations/backhand-index-pointing-right.png",
+   "description": "указывает вправо",
+   "group": "руки"
+  },
+  {
+   "id": "index-pointing-up",
+   "file": "illustrations/index-pointing-up.png",
+   "description": "указывает вверх, важно",
+   "group": "руки"
+  },
+  {
+   "id": "writing-hand",
+   "file": "illustrations/writing-hand.png",
+   "description": "пишет от руки",
+   "group": "руки"
+  },
+  {
+   "id": "flexed-biceps",
+   "file": "illustrations/flexed-biceps.png",
+   "description": "сила, смог",
+   "group": "руки"
+  },
+  {
+   "id": "handshake",
+   "file": "illustrations/handshake.png",
+   "description": "договорились, сделка",
+   "group": "руки"
+  },
+  {
+   "id": "laptop",
+   "file": "illustrations/laptop.png",
+   "description": "ноутбук",
+   "group": "техника"
+  },
+  {
+   "id": "desktop-computer",
+   "file": "illustrations/desktop-computer.png",
+   "description": "компьютер, монитор",
+   "group": "техника"
+  },
+  {
+   "id": "mobile-phone",
+   "file": "illustrations/mobile-phone.png",
+   "description": "телефон, смартфон",
+   "group": "техника"
+  },
+  {
+   "id": "mobile-phone-with-arrow",
+   "file": "illustrations/mobile-phone-with-arrow.png",
+   "description": "телефон, отправка, звонок",
+   "group": "техника"
+  },
+  {
+   "id": "keyboard",
+   "file": "illustrations/keyboard.png",
+   "description": "клавиатура",
+   "group": "техника"
+  },
+  {
+   "id": "computer-mouse",
+   "file": "illustrations/computer-mouse.png",
+   "description": "мышь",
+   "group": "техника"
+  },
+  {
+   "id": "floppy-disk",
+   "file": "illustrations/floppy-disk.png",
+   "description": "сохранить, дискета",
+   "group": "техника"
+  },
+  {
+   "id": "battery",
+   "file": "illustrations/battery.png",
+   "description": "батарея, заряд",
+   "group": "техника"
+  },
+  {
+   "id": "low-battery",
+   "file": "illustrations/low-battery.png",
+   "description": "разряжен, устал",
+   "group": "техника"
+  },
+  {
+   "id": "electric-plug",
+   "file": "illustrations/electric-plug.png",
+   "description": "розетка, подключение",
+   "group": "техника"
+  },
+  {
+   "id": "satellite-antenna",
+   "file": "illustrations/satellite-antenna.png",
+   "description": "сигнал, связь, антенна",
+   "group": "техника"
+  },
+  {
+   "id": "globe-with-meridians",
+   "file": "illustrations/globe-with-meridians.png",
+   "description": "интернет, весь мир",
+   "group": "техника"
+  },
+  {
+   "id": "gear",
+   "file": "illustrations/gear.png",
+   "description": "настройки, механизм",
+   "group": "инструменты"
+  },
+  {
+   "id": "wrench",
+   "file": "illustrations/wrench.png",
+   "description": "исправить, настроить",
+   "group": "инструменты"
+  },
+  {
+   "id": "hammer-and-wrench",
+   "file": "illustrations/hammer-and-wrench.png",
+   "description": "инструменты, ремонт",
+   "group": "инструменты"
+  },
+  {
+   "id": "toolbox",
+   "file": "illustrations/toolbox.png",
+   "description": "набор инструментов",
+   "group": "инструменты"
+  },
+  {
+   "id": "magnifying-glass-tilted-left",
+   "file": "illustrations/magnifying-glass-tilted-left.png",
+   "description": "поиск, лупа",
+   "group": "инструменты"
+  },
+  {
+   "id": "link",
+   "file": "illustrations/link.png",
+   "description": "ссылка, связь",
+   "group": "инструменты"
+  },
+  {
+   "id": "locked",
+   "file": "illustrations/locked.png",
+   "description": "закрыто, замок",
+   "group": "инструменты"
+  },
+  {
+   "id": "unlocked",
+   "file": "illustrations/unlocked.png",
+   "description": "открыто, доступ",
+   "group": "инструменты"
+  },
+  {
+   "id": "key",
+   "file": "illustrations/key.png",
+   "description": "ключ, доступ, пароль",
+   "group": "инструменты"
+  },
+  {
+   "id": "locked-with-key",
+   "file": "illustrations/locked-with-key.png",
+   "description": "защищено, приватно",
+   "group": "инструменты"
+  },
+  {
+   "id": "shield",
+   "file": "illustrations/shield.png",
+   "description": "защита, безопасность",
+   "group": "инструменты"
+  },
+  {
+   "id": "bell",
+   "file": "illustrations/bell.png",
+   "description": "уведомление, колокольчик",
+   "group": "документы и общение"
+  },
+  {
+   "id": "bell-with-slash",
+   "file": "illustrations/bell-with-slash.png",
+   "description": "без уведомлений, тишина",
+   "group": "документы и общение"
+  },
+  {
+   "id": "light-bulb",
+   "file": "illustrations/light-bulb.png",
+   "description": "идея, лампочка",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "rocket",
+   "file": "illustrations/rocket.png",
+   "description": "запуск, быстро, рост",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "hourglass-done",
+   "file": "illustrations/hourglass-done.png",
+   "description": "время вышло, ожидание",
+   "group": "время"
+  },
+  {
+   "id": "hourglass-not-done",
+   "file": "illustrations/hourglass-not-done.png",
+   "description": "ждём, идёт время",
+   "group": "время"
+  },
+  {
+   "id": "alarm-clock",
+   "file": "illustrations/alarm-clock.png",
+   "description": "будильник, срок, дедлайн",
+   "group": "время"
+  },
+  {
+   "id": "stopwatch",
+   "file": "illustrations/stopwatch.png",
+   "description": "секундомер, скорость",
+   "group": "время"
+  },
+  {
+   "id": "spiral-calendar",
+   "file": "illustrations/spiral-calendar.png",
+   "description": "календарь, план",
+   "group": "время"
+  },
+  {
+   "id": "calendar",
+   "file": "illustrations/calendar.png",
+   "description": "дата, календарь",
+   "group": "время"
+  },
+  {
+   "id": "card-index-dividers",
+   "file": "illustrations/card-index-dividers.png",
+   "description": "картотека, разделы",
+   "group": "документы и общение"
+  },
+  {
+   "id": "file-folder",
+   "file": "illustrations/file-folder.png",
+   "description": "папка",
+   "group": "документы и общение"
+  },
+  {
+   "id": "open-file-folder",
+   "file": "illustrations/open-file-folder.png",
+   "description": "открытая папка",
+   "group": "документы и общение"
+  },
+  {
+   "id": "page-facing-up",
+   "file": "illustrations/page-facing-up.png",
+   "description": "документ, страница",
+   "group": "документы и общение"
+  },
+  {
+   "id": "page-with-curl",
+   "file": "illustrations/page-with-curl.png",
+   "description": "документ, лист",
+   "group": "документы и общение"
+  },
+  {
+   "id": "memo",
+   "file": "illustrations/memo.png",
+   "description": "заметка, записать",
+   "group": "документы и общение"
+  },
+  {
+   "id": "clipboard",
+   "file": "illustrations/clipboard.png",
+   "description": "список, чек-лист, планшет",
+   "group": "документы и общение"
+  },
+  {
+   "id": "pushpin",
+   "file": "illustrations/pushpin.png",
+   "description": "закрепить, кнопка",
+   "group": "документы и общение"
+  },
+  {
+   "id": "paperclip",
+   "file": "illustrations/paperclip.png",
+   "description": "скрепка, вложение",
+   "group": "документы и общение"
+  },
+  {
+   "id": "pencil",
+   "file": "illustrations/pencil.png",
+   "description": "карандаш, редактировать",
+   "group": "документы и общение"
+  },
+  {
+   "id": "books",
+   "file": "illustrations/books.png",
+   "description": "книги, знания",
+   "group": "документы и общение"
+  },
+  {
+   "id": "open-book",
+   "file": "illustrations/open-book.png",
+   "description": "открытая книга, читать",
+   "group": "документы и общение"
+  },
+  {
+   "id": "notebook",
+   "file": "illustrations/notebook.png",
+   "description": "блокнот, тетрадь",
+   "group": "документы и общение"
+  },
+  {
+   "id": "envelope",
+   "file": "illustrations/envelope.png",
+   "description": "письмо, конверт",
+   "group": "документы и общение"
+  },
+  {
+   "id": "incoming-envelope",
+   "file": "illustrations/incoming-envelope.png",
+   "description": "новое письмо",
+   "group": "документы и общение"
+  },
+  {
+   "id": "speech-balloon",
+   "file": "illustrations/speech-balloon.png",
+   "description": "сообщение, реплика",
+   "group": "документы и общение"
+  },
+  {
+   "id": "thought-balloon",
+   "file": "illustrations/thought-balloon.png",
+   "description": "мысль, мечта",
+   "group": "документы и общение"
+  },
+  {
+   "id": "left-speech-bubble",
+   "file": "illustrations/left-speech-bubble.png",
+   "description": "ответ, реплика",
+   "group": "документы и общение"
+  },
+  {
+   "id": "megaphone",
+   "file": "illustrations/megaphone.png",
+   "description": "объявление, громко",
+   "group": "документы и общение"
+  },
+  {
+   "id": "loudspeaker",
+   "file": "illustrations/loudspeaker.png",
+   "description": "громкость, звук",
+   "group": "документы и общение"
+  },
+  {
+   "id": "studio-microphone",
+   "file": "illustrations/studio-microphone.png",
+   "description": "микрофон, запись голоса",
+   "group": "техника"
+  },
+  {
+   "id": "headphone",
+   "file": "illustrations/headphone.png",
+   "description": "наушники, слушать",
+   "group": "техника"
+  },
+  {
+   "id": "movie-camera",
+   "file": "illustrations/movie-camera.png",
+   "description": "видео, съёмка",
+   "group": "техника"
+  },
+  {
+   "id": "camera",
+   "file": "illustrations/camera.png",
+   "description": "фото, камера",
+   "group": "техника"
+  },
+  {
+   "id": "television",
+   "file": "illustrations/television.png",
+   "description": "телевизор, экран",
+   "group": "техника"
+  },
+  {
+   "id": "video-game",
+   "file": "illustrations/video-game.png",
+   "description": "игра, геймпад",
+   "group": "техника"
+  },
+  {
+   "id": "joystick",
+   "file": "illustrations/joystick.png",
+   "description": "джойстик, управление",
+   "group": "техника"
+  },
+  {
+   "id": "puzzle-piece",
+   "file": "illustrations/puzzle-piece.png",
+   "description": "пазл, недостающая часть",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "bar-chart",
+   "file": "illustrations/bar-chart.png",
+   "description": "график, статистика",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "chart-increasing",
+   "file": "illustrations/chart-increasing.png",
+   "description": "рост, график вверх",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "chart-decreasing",
+   "file": "illustrations/chart-decreasing.png",
+   "description": "падение, график вниз",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "money-bag",
+   "file": "illustrations/money-bag.png",
+   "description": "мешок денег, бюджет",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "dollar-banknote",
+   "file": "illustrations/dollar-banknote.png",
+   "description": "деньги, купюра",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "money-with-wings",
+   "file": "illustrations/money-with-wings.png",
+   "description": "деньги улетают, траты",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "coin",
+   "file": "illustrations/coin.png",
+   "description": "монета",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "credit-card",
+   "file": "illustrations/credit-card.png",
+   "description": "карта, оплата",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "receipt",
+   "file": "illustrations/receipt.png",
+   "description": "чек, счёт",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "shopping-cart",
+   "file": "illustrations/shopping-cart.png",
+   "description": "корзина, покупка",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "gem-stone",
+   "file": "illustrations/gem-stone.png",
+   "description": "ценность, бриллиант",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "trophy",
+   "file": "illustrations/trophy.png",
+   "description": "кубок, победа",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "1st-place-medal",
+   "file": "illustrations/1st-place-medal.png",
+   "description": "первое место",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "bullseye",
+   "file": "illustrations/bullseye.png",
+   "description": "цель, точно в цель",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "crown",
+   "file": "illustrations/crown.png",
+   "description": "корона, лучший",
+   "group": "деньги и рост"
+  },
+  {
+   "id": "fire",
+   "file": "illustrations/fire.png",
+   "description": "огонь, горячо, популярно",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "high-voltage",
+   "file": "illustrations/high-voltage.png",
+   "description": "молния, энергия, быстро",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "sparkles",
+   "file": "illustrations/sparkles.png",
+   "description": "блеск, новое, магия",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "star",
+   "file": "illustrations/star.png",
+   "description": "звезда, оценка",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "glowing-star",
+   "file": "illustrations/glowing-star.png",
+   "description": "сияющая звезда, особенное",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "collision",
+   "file": "illustrations/collision.png",
+   "description": "удар, взрыв, конфликт",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "hundred-points",
+   "file": "illustrations/hundred-points.png",
+   "description": "сто баллов, идеально",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "check-mark-button",
+   "file": "illustrations/check-mark-button.png",
+   "description": "готово, верно",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "cross-mark",
+   "file": "illustrations/cross-mark.png",
+   "description": "неверно, ошибка",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "warning",
+   "file": "illustrations/warning.png",
+   "description": "внимание, предупреждение",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "no-entry",
+   "file": "illustrations/no-entry.png",
+   "description": "вход запрещён",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "prohibited",
+   "file": "illustrations/prohibited.png",
+   "description": "запрещено",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "red-question-mark",
+   "file": "illustrations/red-question-mark.png",
+   "description": "вопрос",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "red-exclamation-mark",
+   "file": "illustrations/red-exclamation-mark.png",
+   "description": "важно, восклицание",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "seedling",
+   "file": "illustrations/seedling.png",
+   "description": "росток, начало, рост",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "potted-plant",
+   "file": "illustrations/potted-plant.png",
+   "description": "растение, спокойствие",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "hot-beverage",
+   "file": "illustrations/hot-beverage.png",
+   "description": "кофе, перерыв",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "house",
+   "file": "illustrations/house.png",
+   "description": "дом",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "office-building",
+   "file": "illustrations/office-building.png",
+   "description": "офис, компания",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "school",
+   "file": "illustrations/school.png",
+   "description": "школа",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "package",
+   "file": "illustrations/package.png",
+   "description": "посылка, пакет, доставка",
+   "group": "документы и общение"
+  },
+  {
+   "id": "wrapped-gift",
+   "file": "illustrations/wrapped-gift.png",
+   "description": "подарок, бонус",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "balloon",
+   "file": "illustrations/balloon.png",
+   "description": "шарик, праздник",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "party-popper",
+   "file": "illustrations/party-popper.png",
+   "description": "хлопушка, поздравление",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "bomb",
+   "file": "illustrations/bomb.png",
+   "description": "бомба, опасно",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "magic-wand",
+   "file": "illustrations/magic-wand.png",
+   "description": "волшебная палочка, автоматически",
+   "group": "инструменты"
+  },
+  {
+   "id": "crystal-ball",
+   "file": "illustrations/crystal-ball.png",
+   "description": "хрустальный шар, предсказание",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "mirror",
+   "file": "illustrations/mirror.png",
+   "description": "зеркало, отражение",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "teddy-bear",
+   "file": "illustrations/teddy-bear.png",
+   "description": "игрушка, мишка",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "brick",
+   "file": "illustrations/brick.png",
+   "description": "кирпич, основа, блок",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "chains",
+   "file": "illustrations/chains.png",
+   "description": "цепи, связано, ограничение",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "snail",
+   "file": "illustrations/snail.png",
+   "description": "улитка, медленно",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "turtle",
+   "file": "illustrations/turtle.png",
+   "description": "черепаха, медленно",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "cat-face",
+   "file": "illustrations/cat-face.png",
+   "description": "кот",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "dog-face",
+   "file": "illustrations/dog-face.png",
+   "description": "собака",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "owl",
+   "file": "illustrations/owl.png",
+   "description": "сова, мудрость, ночь",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "parrot",
+   "file": "illustrations/parrot.png",
+   "description": "попугай, повторяет за другими",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "honeybee",
+   "file": "illustrations/honeybee.png",
+   "description": "пчела, трудолюбие",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "ladder",
+   "file": "illustrations/ladder.png",
+   "description": "лестница, шаги, карьера",
+   "group": "инструменты"
+  },
+  {
+   "id": "construction",
+   "file": "illustrations/construction.png",
+   "description": "в разработке, стройка",
+   "group": "инструменты"
+  },
+  {
+   "id": "hammer",
+   "file": "illustrations/hammer.png",
+   "description": "молоток",
+   "group": "инструменты"
+  },
+  {
+   "id": "scissors",
+   "file": "illustrations/scissors.png",
+   "description": "ножницы, вырезать",
+   "group": "инструменты"
+  },
+  {
+   "id": "wastebasket",
+   "file": "illustrations/wastebasket.png",
+   "description": "корзина, удалить",
+   "group": "документы и общение"
+  },
+  {
+   "id": "recycling-symbol",
+   "file": "illustrations/recycling-symbol.png",
+   "description": "переработка, повтор",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "bookmark-tabs",
+   "file": "illustrations/bookmark-tabs.png",
+   "description": "закладки",
+   "group": "документы и общение"
+  },
+  {
+   "id": "label",
+   "file": "illustrations/label.png",
+   "description": "ярлык, метка, тег",
+   "group": "документы и общение"
+  },
+  {
+   "id": "ticket",
+   "file": "illustrations/ticket.png",
+   "description": "билет",
+   "group": "документы и общение"
+  },
+  {
+   "id": "thermometer",
+   "file": "illustrations/thermometer.png",
+   "description": "температура",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "compass",
+   "file": "illustrations/compass.png",
+   "description": "компас, направление",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "world-map",
+   "file": "illustrations/world-map.png",
+   "description": "карта мира",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "round-pushpin",
+   "file": "illustrations/round-pushpin.png",
+   "description": "метка на карте, место",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "airplane",
+   "file": "illustrations/airplane.png",
+   "description": "самолёт, путешествие",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "automobile",
+   "file": "illustrations/automobile.png",
+   "description": "машина",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "bicycle",
+   "file": "illustrations/bicycle.png",
+   "description": "велосипед",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "flying-saucer",
+   "file": "illustrations/flying-saucer.png",
+   "description": "летающая тарелка, странное",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "abacus",
+   "file": "illustrations/abacus.png",
+   "description": "счёты, посчитать",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "test-tube",
+   "file": "illustrations/test-tube.png",
+   "description": "пробирка, эксперимент",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "dna",
+   "file": "illustrations/dna.png",
+   "description": "ДНК, суть",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "microscope",
+   "file": "illustrations/microscope.png",
+   "description": "микроскоп, детали",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "telescope",
+   "file": "illustrations/telescope.png",
+   "description": "телескоп, далеко, будущее",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "graduation-cap",
+   "file": "illustrations/graduation-cap.png",
+   "description": "выпускной, обучение",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "briefcase",
+   "file": "illustrations/briefcase.png",
+   "description": "портфель, работа",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "glasses",
+   "file": "illustrations/glasses.png",
+   "description": "очки, читать внимательно",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "broom",
+   "file": "illustrations/broom.png",
+   "description": "метла, уборка, почистить",
+   "group": "инструменты"
+  },
+  {
+   "id": "anchor",
+   "file": "illustrations/anchor.png",
+   "description": "якорь, опора",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "dashing-away",
+   "file": "illustrations/dashing-away.png",
+   "description": "быстро убегает, ушло",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "zzz",
+   "file": "illustrations/zzz.png",
+   "description": "сон, скука",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "musical-notes",
+   "file": "illustrations/musical-notes.png",
+   "description": "музыка",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "red-heart",
+   "file": "illustrations/red-heart.png",
+   "description": "сердце, любовь",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "broken-heart",
+   "file": "illustrations/broken-heart.png",
+   "description": "разбитое сердце",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "dizzy",
+   "file": "illustrations/dizzy.png",
+   "description": "головокружение",
+   "group": "символы и предметы"
+  },
+  {
+   "id": "moai",
+   "file": "illustrations/moai.png",
+   "description": "каменное лицо, невозмутимо",
+   "group": "эмоции"
+  }
+ ]
+}

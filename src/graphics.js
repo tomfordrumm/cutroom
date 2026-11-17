@@ -12,6 +12,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { bundle } from "@remotion/bundler";
+import webpack from "webpack";
 import { makeCancelSignal, openBrowser, renderMedia, renderStill, selectComposition } from "@remotion/renderer";
 import { config } from "./config.js";
 import { exists, readJson, writeJson } from "./cut.js";
@@ -23,7 +24,7 @@ import { measureTracks, trackGains } from "./sound.js";
 import { sourceRangeToProgram, sourceToProgram } from "./timeline.js";
 
 export const GRAPHICS_FORMAT = "cutroom-graphics-v1";
-export const OVERLAY_TYPES = ["title", "fullscreen", "list", "stat", "lowerThird", "callout", "action", "zoom", "image", "video", "custom", "pack"];
+export const OVERLAY_TYPES = ["title", "fullscreen", "list", "stat", "lowerThird", "callout", "action", "chat", "sticker", "zoom", "image", "video", "custom", "pack"];
 export const AUDIO_TYPES = ["music", "sfx"];
 // `volume` and `pauseVolume`: with sound settings frozen in the version they
 // are multipliers (≤ 1) of the author's level relative to the voice; the
@@ -113,7 +114,14 @@ function validateAudio(list, { duration, problems, media, ids }) {
 export function validateGraphics(raw, { duration, custom = [], pack = null, media = null }) {
   const problems = [];
   if (raw?.format !== GRAPHICS_FORMAT) problems.push(`format должен быть "${GRAPHICS_FORMAT}".`);
-  const theme = validateTheme(raw?.theme, problems, "theme");
+  // The look: a named theme of the pack, then graphics.json's own overrides on top.
+  const looks = pack?.looks ?? {};
+  let look = null;
+  if (raw?.look !== undefined) {
+    if (looks[raw.look]) look = raw.look;
+    else problems.push(`look: в пакете ${Object.keys(looks).length ? `есть стили ${Object.keys(looks).join(", ")}` : "нет стилей"}, «${raw.look}» нет.`);
+  } else look = pack?.defaultLook ?? null;
+  const theme = { ...(look ? looks[look].theme : {}), ...validateTheme(raw?.theme, problems, "theme") };
   // No "captions" key: the pack's captions. null/false or style "off": none.
   let captions = null;
   if (raw?.captions === undefined) captions = pack?.captions ? { ...pack.captions } : null;
@@ -145,18 +153,46 @@ export function validateGraphics(raw, { duration, custom = [], pack = null, medi
     if (o.type === "image" || o.type === "video") {
       const file = checkFile(o.props?.file, [o.type], `${where}.props`, problems, media);
       if (!file) return;
-      o = { ...o, props: { ...o.props, file: file.ref } };
+      // A clip rendered with alpha (.webm) is drawn over the video, not on a black frame.
+      const alpha = o.type === "video" && file.ref.startsWith("clips/") && /\.webm$/i.test(file.ref);
+      o = { ...o, props: { ...o.props, file: file.ref, ...(alpha ? { transparent: true } : {}) } };
     }
+    if (o.type === "sticker") {
+      const known = (pack?.illustrations ?? []).map((i) => i.id);
+      if (!known.length) { problems.push(`${where}: в пакете вкуса нет иллюстраций, sticker недоступен.`); return; }
+      if (!known.includes(o.props?.id)) { problems.push(`${where}: props.id — id иллюстрации из illustrations.md, «${o.props?.id ?? ""}» нет.`); return; }
+    }
+    if (o.type === "chat" && !chatValid(o.props, where, problems, { start, end })) return;
     overlays.push({ id, type: o.type, component: o.type === "custom" || o.type === "pack" ? o.component : undefined, start, end: Math.min(end, duration), props: o.props ?? {} });
   });
   const audio = validateAudio(raw?.audio, { duration, problems, media, ids });
   if (problems.length) throw new Error(`graphics.json не прошёл проверку:\n- ${problems.join("\n- ")}`);
-  return { format: GRAPHICS_FORMAT, theme, captions, overlays, audio };
+  return { format: GRAPHICS_FORMAT, look, theme, captions, overlays, audio };
+}
+
+/** A chat's messages: role, text and when each appears (source seconds inside the element). */
+function chatValid(props, where, problems, { start, end }) {
+  const messages = props?.messages;
+  if (!Array.isArray(messages) || !messages.length) { problems.push(`${where}: props.messages — массив сообщений { role, text, type: [начало, конец] | at }.`); return false; }
+  let ok = true;
+  messages.forEach((m, i) => {
+    const at = `${where}.messages[${i}]`;
+    if (!["user", "assistant"].includes(m?.role)) { problems.push(`${at}.role: user или assistant.`); ok = false; }
+    if (typeof m?.text !== "string" || !m.text.trim()) { problems.push(`${at}.text: текст сообщения.`); ok = false; }
+    const inside = (t) => finite(t) && t >= start - 0.01 && t <= end + 0.01;
+    if (m?.type !== undefined) {
+      if (m.role !== "user") { problems.push(`${at}.type: набор в поле ввода бывает только у user.`); ok = false; }
+      else if (!Array.isArray(m.type) || m.type.length !== 2 || !inside(m.type[0]) || !inside(m.type[1]) || m.type[1] <= m.type[0]) { problems.push(`${at}.type: [начало, конец] набора — секунды исходника внутри элемента (${start}–${end}).`); ok = false; }
+    } else if (!inside(m?.at)) { problems.push(`${at}.at: секунда исходника внутри элемента (${start}–${end}), когда сообщение появляется; у вопроса, который набирается, вместо at — type.`); ok = false; }
+  });
+  return ok;
 }
 
 const nodeLabel = (value) => (typeof value === "string" ? value : value?.label ?? "");
 const label = (o) => String(o.type === "action"
   ? [nodeLabel(o.props.subject), o.props.action, nodeLabel(o.props.object), nodeLabel(o.props.result)].filter(Boolean).join(" → ")
+  : o.type === "chat" ? `${o.props.app ?? "чат"}: ${(o.props.messages ?? []).map((m) => m.text).join(" / ")}`
+  : o.type === "sticker" ? `${o.props.id}${o.props.caption ? `: ${o.props.caption}` : ""}`
   : o.props.text ?? o.props.title ?? o.props.value ?? (o.props.file ? path.basename(String(o.props.file)) : null) ?? o.component ?? o.type).slice(0, 60);
 
 /** Files a graphics.json uses (references), for freezing into the version. */
@@ -175,7 +211,20 @@ export function placeGraphics(graphics, timeline, fps) {
     if (!range) { warnings.push(`${o.id}: ${o.start}–${o.end} с исходника целиком вырезано, элемент не показан.`); return []; }
     const from = Math.round(range.start * fps), to = Math.round(range.end * fps);
     if (to - from < 3) { warnings.push(`${o.id}: после склейки остаётся меньше 0,1 с.`); return []; }
-    return [{ ...o, from, to, programStart: range.start, programEnd: range.end, label: label(o) }];
+    // Moments inside a chat are source seconds too: frames of the element after the cut.
+    const local = (t) => {
+      let at = sourceToProgram(timeline.segments, t);
+      if (at === null) {
+        // Inside a cut: the next moment that stays.
+        at = timeline.segments.find((seg) => seg.sourceStart >= t)?.programStart ?? range.end;
+        warnings.push(`${o.id}: момент ${t} с исходника внутри чата вырезан, сообщение сдвинуто к следующему оставшемуся.`);
+      }
+      return Math.max(0, Math.min(to - from, Math.round((at - range.start) * fps)));
+    };
+    const props = o.type === "chat"
+      ? { ...o.props, messages: o.props.messages.map((m) => ({ ...m, frames: m.type ? { typeFrom: local(m.type[0]), typeTo: local(m.type[1]) } : { at: local(m.at) } })) }
+      : o.props;
+    return [{ ...o, props, from, to, programStart: range.start, programEnd: range.end, label: label(o) }];
   });
   // Music plays on without cuts from where its source interval begins; a sound effect sits on its source second.
   const total = Math.round(timeline.duration * fps);
@@ -210,9 +259,18 @@ const fontFormat = (file) => ({ woff2: "woff2", woff: "woff", ttf: "truetype", o
 async function writePackSource(srcDir, pack) {
   const target = path.join(srcDir, "pack");
   if (!pack) return;
-  for (const sub of ["components", "fonts", "assets"]) {
+  for (const sub of ["components", "fonts", "assets", "illustrations"]) {
     if (await exists(path.join(pack.dir, sub))) await cp(path.join(pack.dir, sub), path.join(target, sub), { recursive: true });
   }
+  const pictures = pack.illustrations ?? [];
+  await writeFile(path.join(target, "illustrations.ts"), [
+    "// Generated from the pack's illustrations.json.",
+    'import type { IllustrationAsset } from "./illustrations.types"',
+    ...pictures.map((item, i) => `import i${i} from ${JSON.stringify(`./${item.file}`)}`),
+    "export type { IllustrationAsset }",
+    `export const ILLUSTRATIONS: Record<string, IllustrationAsset> = {${pictures.map((item, i) => `\n  ${JSON.stringify(item.id)}: { src: i${i} as unknown as string, width: ${item.width}, height: ${item.height}${item.anchor ? `, anchor: ${JSON.stringify(item.anchor)}` : ""} },`).join("")}\n}`,
+    "",
+  ].join("\n"));
   await writeFile(path.join(target, "info.json"), JSON.stringify({
     id: pack.id, name: pack.name, version: pack.version, theme: pack.theme, captions: pack.captions, replaces: pack.replaces, fullFrame: pack.fullFrame,
     fonts: pack.fonts.map(({ family, weight, style }) => ({ family, weight, style })),
@@ -249,6 +307,8 @@ async function bundleFor(dir, onProgress = () => {}) {
     enableCaching: false,
     webpackOverride: (webpackConfig) => ({
       ...webpackConfig,
+      // JSX compiles to React.createElement: components work without importing React themselves.
+      plugins: [...(webpackConfig.plugins ?? []), new webpack.ProvidePlugin({ React: "react" })],
       resolve: {
         ...webpackConfig.resolve,
         alias: { ...(webpackConfig.resolve?.alias ?? {}), cutroom$: path.join(srcDir, "api.ts") },
@@ -442,6 +502,27 @@ export const isFullFrame = (o, pack) => o.type === "fullscreen" || o.props?.full
   || (o.type === "pack" && (pack?.fullFrame ?? []).includes(o.component))
   || (pack?.replaces?.[o.type] && (pack?.fullFrame ?? []).includes(pack.replaces[o.type]));
 
+// Below this share of the previous frame's content still in place, a boundary reads as a slide change.
+const CARRY_SCORE = 0.2;
+
+/** Scenes of scenes.json on program frames, in order; `full` when one of their graphics covers the frame. */
+async function sceneRanges(dir, prepared) {
+  const raw = await readJson(path.join(dir, "scenes.json")).catch(() => null);
+  const list = Array.isArray(raw) ? raw : raw?.scenes;
+  if (!Array.isArray(list)) return [];
+  const result = [];
+  for (const scene of list) {
+    const range = sourceRangeToProgram(prepared.timeline.segments, Number(scene?.start), Number(scene?.end));
+    if (!range) continue;
+    const from = Math.round(range.start * prepared.fps), to = Math.round(range.end * prepared.fps);
+    if (to - from < 3) continue;
+    const ids = Array.isArray(scene.overlays) ? scene.overlays : [];
+    const full = prepared.overlays.some((o) => ids.includes(o.id) && isFullFrame(o, prepared.pack));
+    result.push({ id: String(scene.id ?? `s${result.length + 1}`), from, to, programStart: range.start, programEnd: range.end, full });
+  }
+  return result.sort((a, b) => a.from - b.from);
+}
+
 const area = (b) => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
 const intersect = (a, b) => [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.min(a[2], b[2]), Math.min(a[3], b[3])];
 
@@ -463,6 +544,7 @@ export async function reviewGraphics(dir, { duration, size, onProgress = () => {
   const safe = safeArea(width, height);
   const work = path.join(dir, "frames", "review");
   await rm(work, { recursive: true, force: true });
+  for (const name of await readdir(path.join(dir, "frames")).catch(() => [])) if (/^(scenes|review)-sheet-\d+\.jpg$/.test(name)) await rm(path.join(dir, "frames", name), { force: true });
   await mkdir(work, { recursive: true });
   const checked = prepared.overlays.filter((o) => o.type !== "zoom");
   const report = { checkedAt: new Date().toISOString(), size, faces: prepared.faces.length > 0, overlays: [], sheets: [] };
@@ -512,6 +594,33 @@ export async function reviewGraphics(dir, { duration, size, onProgress = () => {
       await still(o.from + Math.round(length * 0.5), path.join(dir, entry.still));
       report.overlays.push(entry);
     }
+
+    // Scenes in motion: start, middle and end of each, a row per scene.
+    const scenes = await sceneRanges(dir, prepared);
+    let k = 0;
+    for (const scene of scenes) {
+      onProgress(`Кадры сцены ${scene.id}`);
+      for (const share of [0.12, 0.5, 0.9]) {
+        k += 1;
+        await still(scene.from + Math.round((scene.to - scene.from) * share), path.join(work, `scene-${String(k).padStart(3, "0")}.png`));
+      }
+    }
+    report.scenes = scenes.map(({ id, programStart, programEnd }) => ({ id, start: programStart, end: programEnd }));
+    // What survives each back-to-back boundary between full-frame scenes.
+    const pairs = [];
+    for (let i = 0; i + 1 < scenes.length; i++) {
+      const a = scenes[i], b = scenes[i + 1];
+      if (!a.full || !b.full || b.from - a.to > Math.round(prepared.fps * 0.3)) continue;
+      const before = path.join(work, `carry-${a.id}-a.png`), after = path.join(work, `carry-${a.id}-b.png`);
+      await still(a.to - 3, before);
+      await still(b.from + 3, after);
+      pairs.push({ from: a.id, to: b.id, files: [before, after] });
+    }
+    if (pairs.length) {
+      const { stdout } = await promisify(execFile)(PYTHON, [VISION, "carry", ...pairs.flatMap((p) => p.files)], { maxBuffer: 8 * 1024 * 1024 });
+      const scores = JSON.parse(stdout);
+      report.transitions = pairs.map((p, i) => ({ from: p.from, to: p.to, carry: scores[i], warning: scores[i] !== null && scores[i] < CARRY_SCORE ? `${p.from} → ${p.to}: на стыке из прежнего кадра остаётся ${Math.round(scores[i] * 100)}% — похоже на смену слайда. Посмотри кадры frames/review/carry-${p.from}-a.png и -b.png: что переходит в следующую сцену?` : null }));
+    }
   });
 
   if (report.overlays.length) {
@@ -523,9 +632,77 @@ export async function reviewGraphics(dir, { duration, size, onProgress = () => {
       "-vf", `scale=${portrait ? -2 : 640}:${portrait ? 640 : -2},tile=${cols}x${rows}:padding=12:margin=12:color=white`, "-q:v", "3", sheet]);
     report.sheets = (await readdir(path.join(dir, "frames"))).filter((name) => /^review-sheet-\d+\.jpg$/.test(name)).sort().map((name) => `frames/${name}`);
   }
+  if (report.scenes?.length) {
+    const portrait = height > width;
+    const rows = Math.min(portrait ? 3 : 4, report.scenes.length);
+    await promisify(execFile)("ffmpeg", ["-v", "error", "-y", "-framerate", "1", "-i", path.join(work, "scene-%03d.png"),
+      "-vf", `scale=${portrait ? -2 : 560}:${portrait ? 560 : -2},tile=3x${rows}:padding=10:margin=10:color=white`, "-q:v", "3", path.join(dir, "frames", "scenes-sheet-%d.jpg")]);
+    report.sceneSheets = (await readdir(path.join(dir, "frames"))).filter((name) => /^scenes-sheet-\d+\.jpg$/.test(name)).sort().map((name) => `frames/${name}`);
+  }
   report.status = report.overlays.some((o) => o.status === "fail") ? "fail" : report.overlays.some((o) => o.status === "warn") ? "warn" : "pass";
   await writeJson(path.join(dir, "gfx-review.json"), report);
   return report;
+}
+
+// ---------- catalogues for the agent ---------------------------------------------
+
+const MOVES = JSON.parse(readFileSync(path.join(TEMPLATE_SRC, "moves-gallery.json"), "utf8"));
+const GALLERY_FRAMES = [0, 4, 8, 13, 19, 29];
+
+/**
+ * A sheet of the move library: a row per move, six frames over its time.
+ * Cached by the library's source, so it is rendered once per Cutroom version.
+ */
+export async function renderMovesSheet(dir, { onProgress = () => {} } = {}) {
+  const hash = createHash("sha256");
+  for (const name of ["moves.ts", "MovesGallery.tsx", "moves-gallery.json", "kit.tsx"]) hash.update(await readFile(path.join(TEMPLATE_SRC, name)));
+  const key = hash.digest("hex").slice(0, 16);
+  const cacheDir = path.join(config.data, "cache");
+  const cached = path.join(cacheDir, `moves-${key}.jpg`);
+  const target = path.join(dir, "frames", "moves-sheet.jpg");
+  await mkdir(path.dirname(target), { recursive: true });
+  if (!(await exists(cached))) {
+    const serveUrl = await bundleFor(dir, onProgress);
+    const work = path.join(dir, "frames", "moves");
+    await rm(work, { recursive: true, force: true });
+    await mkdir(work, { recursive: true });
+    const browser = await openBrowser("chrome", { browserExecutable: BROWSER, logLevel: "error" });
+    try {
+      let n = 0;
+      for (const { name } of MOVES) {
+        onProgress(`Движение ${name}`);
+        const composition = await selectComposition({ serveUrl, id: "Moves", inputProps: { move: name }, logLevel: "error", browserExecutable: BROWSER, puppeteerInstance: browser });
+        for (const frame of GALLERY_FRAMES) {
+          n += 1;
+          await renderStill({ composition, serveUrl, frame, inputProps: { move: name }, output: path.join(work, `m-${String(n).padStart(3, "0")}.png`), imageFormat: "png", logLevel: "error", browserExecutable: BROWSER, puppeteerInstance: browser });
+        }
+      }
+    } finally {
+      await browser.close({ silent: true }).catch(() => {});
+    }
+    await mkdir(cacheDir, { recursive: true });
+    await promisify(execFile)("ffmpeg", ["-v", "error", "-y", "-framerate", "1", "-i", path.join(work, "m-%03d.png"), "-vf", `scale=270:270,tile=${GALLERY_FRAMES.length}x${MOVES.length}:padding=4:margin=6:color=white`, "-frames:v", "1", "-q:v", "3", cached]);
+    await rm(work, { recursive: true, force: true });
+  }
+  await cp(cached, target);
+  return { sheet: path.relative(dir, target), moves: MOVES };
+}
+
+/** A labelled contact sheet of the version pack's illustrations, by group. */
+export async function renderIllustrationsSheet(dir) {
+  const pack = await versionPack(dir);
+  const items = pack?.illustrations ?? [];
+  if (!items.length) return { sheets: [], count: 0 };
+  const groups = [...new Set(items.map((i) => i.group ?? "прочее"))];
+  const sheets = [];
+  await mkdir(path.join(dir, "frames"), { recursive: true });
+  for (const [n, group] of groups.entries()) {
+    const list = items.filter((i) => (i.group ?? "прочее") === group);
+    const out = path.join(dir, "frames", `illustrations-${n + 1}.jpg`);
+    await promisify(execFile)(PYTHON, [VISION, "sheet", out, "6", ...list.map((i) => `${path.join(pack.dir, i.file)}:${i.id}`)], { maxBuffer: 8 * 1024 * 1024 });
+    sheets.push({ group, file: path.relative(dir, out), count: list.length });
+  }
+  return { sheets, count: items.length };
 }
 
 /** The cut with graphics as MP4. `baseVideo` is the cut at the output size. */

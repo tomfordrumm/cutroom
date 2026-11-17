@@ -6,6 +6,7 @@ import { createWriteStream, existsSync } from "node:fs";
 import path from "node:path";
 import { usageCollector } from "./agent-usage.js";
 import { config } from "./config.js";
+import { engineEnv } from "./engines.js";
 
 export const AGENT_LABELS = { claude: "Claude Code", codex: "Codex CLI", none: "Без агента" };
 
@@ -92,7 +93,8 @@ export function runAgent(agent, { prompt, cwd, logPath, signal, model = "", effo
   const log = createWriteStream(logPath, { flags: "a" });
   log.write(`\n=== ${new Date().toISOString()} ${command} model=${model || "default"} effort=${effort || "default"} ===\n`);
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, env: { ...process.env, CI: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+    // The clip engines' browser, Python and no-telemetry settings, for the engines' own commands.
+    const child = spawn(command, args, { cwd, env: { ...process.env, ...engineEnv(), CI: "1" }, stdio: ["ignore", "pipe", "pipe"] });
     let buffer = "";
     let lastError = "";
     let usedModel = null;

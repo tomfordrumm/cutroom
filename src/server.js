@@ -16,7 +16,8 @@ import { normalizeSound, SOUND_DEFAULTS, SOUND_LIMITS } from "./sound.js";
 import { backfillUsage, usageByVideo, usageSummary, videoUsage } from "./usage.js";
 import { backfillProposals, decideProposal, videoProposals } from "./proposals.js";
 import { addEntry, listDictionary, removeEntry, updateEntry } from "./dictionary.js";
-import { assetsDir, categoryDir, checkUpload, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME } from "./library.js";
+import { enginesSnapshot, installOnetake, installOnetakePro, removeOnetake, setEngineEnabled } from "./engines.js";
+import { assetsDir, builtinSounds, categoryDir, checkUpload, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME, SOUNDS_DIR } from "./library.js";
 import { isWhisperModel, modelDownloaded, WHISPER_MODELS, whisperModelId } from "./models.js";
 import { listSources } from "./sources.js";
 import { attachTerminal } from "./terminal.js";
@@ -323,6 +324,31 @@ route("DELETE", "/api/packs/:id", async (req, res, { params }) => {
   send(res, 200, await packsSnapshot());
 });
 
+// Clip engines: HyperFrames ships in the image, onetake is installed by the author after reading its licence.
+route("GET", "/api/engines", async (req, res) => send(res, 200, enginesSnapshot()));
+route("PUT", "/api/engines/:id", async (req, res, { params }) => {
+  const body = await readBody(req);
+  try { setEngineEnabled(params.id, body.enabled === true); } catch (error) { throw new HttpError(400, error.message); }
+  send(res, 200, enginesSnapshot());
+});
+route("POST", "/api/engines/onetake/install", async (req, res) => {
+  const body = await readBody(req);
+  try { send(res, 200, installOnetake({ acceptLicense: body.acceptLicense === true })); } catch (error) { throw new HttpError(400, error.message); }
+});
+route("PUT", "/api/engines/onetake/pro", async (req, res) => {
+  const file = await receiveUpload(req, path.join(config.data, "engines", ".uploads"), `${Date.now()}.zip`);
+  try {
+    send(res, 200, await installOnetakePro(file));
+  } catch (error) {
+    throw new HttpError(400, error.message);
+  } finally {
+    await unlink(file).catch(() => {});
+  }
+});
+route("DELETE", "/api/engines/onetake", async (req, res) => {
+  try { send(res, 200, await removeOnetake()); } catch (error) { throw new HttpError(400, error.message); }
+});
+
 async function dictionarySnapshot() {
   const titles = new Map(db.prepare("SELECT id, title FROM videos").all().map((v) => [v.id, v.title]));
   const current = whisperModelId(getSetting("whisperModel"));
@@ -361,6 +387,8 @@ async function librarySnapshot() {
   return {
     categories: Object.entries(LIBRARY_CATEGORIES).map(([id, { label }]) => ({ id, label, files: files[id] })),
     defaultMusic: files.music.some((f) => f.name === defaultMusic) ? defaultMusic : null,
+    // Cutroom's own effects: the agent picks them next to the author's library.
+    builtinSounds: Object.entries(builtinSounds().roles ?? {}).map(([role, info]) => ({ role, description: info.description, files: (info.files ?? []).map((f) => ({ name: f.file, duration: f.duration })) })),
   };
 }
 const libraryCategory = (id) => {
@@ -381,6 +409,10 @@ route("DELETE", "/api/library/:category/:file", async (req, res, { params }) => 
   await unlink(path.join(categoryDir(category), name)).catch(() => {});
   if (category === "music" && getSetting("defaultMusic", null) === name) setSetting("defaultMusic", null);
   send(res, 200, await librarySnapshot());
+});
+route("GET", "/media/sounds/:role/:file", async (req, res, { params }) => {
+  if (!builtinSounds().roles?.[params.role]) throw new HttpError(404, "Нет такой роли");
+  await serveFile(req, res, path.join(SOUNDS_DIR, params.role, safeName(decodeURIComponent(params.file))));
 });
 route("GET", "/media/library/:category/:file", async (req, res, { params }) => {
   await serveFile(req, res, path.join(categoryDir(libraryCategory(params.category)), safeName(decodeURIComponent(params.file))));

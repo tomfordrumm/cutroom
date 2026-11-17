@@ -51,6 +51,17 @@ RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} @openai/code
 
 COPY --from=whisper /usr/local/bin/whisper-cli /usr/local/bin/whisper-cli
 
+# HyperFrames (HeyGen, Apache 2.0): a clip engine for full-frame motion scenes.
+# The CLI at a pinned version and its agent skills from the same release tag.
+ARG HYPERFRAMES_VERSION=0.9.34
+RUN npm install -g hyperframes@${HYPERFRAMES_VERSION} && npm cache clean --force \
+ && mkdir -p /opt/cutroom/engines/hyperframes/skills /tmp/hf \
+ && curl -fsSL "https://codeload.github.com/heygen-com/hyperframes/tar.gz/refs/tags/v${HYPERFRAMES_VERSION}" | tar -xz -C /tmp/hf \
+ && for skill in hyperframes hyperframes-cli hyperframes-registry; do cp -r /tmp/hf/*/skills/$skill /opt/cutroom/engines/hyperframes/skills/; done \
+ && cp /tmp/hf/*/LICENSE /opt/cutroom/engines/hyperframes/LICENSE \
+ && rm -rf /tmp/hf
+ENV HYPERFRAMES_NO_TELEMETRY=1 DO_NOT_TRACK=1 HYPERFRAMES_NO_UPDATE_CHECK=1 HYPERFRAMES_NO_AUTO_INSTALL=1 HYPERFRAMES_SKIP_SKILLS=1
+
 # Face detection for graphics layout: OpenCV with the YuNet model (MIT, opencv_zoo).
 ARG OPENCV_VERSION=4.10.0.84
 ARG NUMPY_VERSION=2.1.3
@@ -76,6 +87,7 @@ COPY gfx ./gfx
 COPY src ./src
 COPY tools ./tools
 COPY packs ./packs
+COPY sounds ./sounds
 COPY --from=web /web/dist ./web/dist
 COPY instructions ./instructions
 RUN chmod +x src/cli.js && ln -s /opt/cutroom/src/cli.js /usr/local/bin/cutroom

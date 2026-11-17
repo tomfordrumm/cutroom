@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
-import { AudioLines, Bell, Bot, Layers, LogOut, Music, Palette, Volume2, Wallet, type LucideIcon } from "lucide-react"
+import { AudioLines, Bell, Bot, Clapperboard, Layers, LogOut, Music, Palette, Volume2, Wallet, type LucideIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, Navigate, NavLink, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { useAppState } from "@/App"
 import { AgentPicker } from "@/components/AgentPicker"
+import { EngineSettings } from "@/components/EngineSettings"
 import { Library } from "@/components/Library"
 import { ModelPicker } from "@/components/ModelPicker"
 import { PackPicker } from "@/components/PackPicker"
@@ -25,6 +26,7 @@ type Section = { id: string; label: string; icon: LucideIcon; description: strin
 const SECTIONS: Section[] = [
   { id: "agent", label: "Агент", icon: Bot, description: "Кто монтирует ролики и на какой модели.", render: () => <AgentSection /> },
   { id: "style", label: "Стиль монтажа", icon: Palette, description: "Пакет вкуса задаёт оформление, профиль — ваши постоянные правила.", render: () => <StyleSection /> },
+  { id: "engines", label: "Движки клипов", icon: Clapperboard, description: "Другие движки для полноэкранных анимированных сцен.", render: () => <EngineSettings /> },
   { id: "library", label: "Библиотека", icon: Music, description: "Файлы, общие для всех роликов.", render: () => <LibrarySection /> },
   { id: "sound", label: "Звук", icon: Volume2, description: "Громкость голоса, музыки и эффектов.", render: () => <SoundSection /> },
   { id: "speech", label: "Распознавание речи", icon: AudioLines, description: "Расшифровка, субтитры и словарь терминов.", render: () => <SpeechSection /> },

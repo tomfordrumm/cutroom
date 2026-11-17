@@ -6,6 +6,7 @@ import { clamp, useEnterExit } from "../motion"
 import type { OverlayProps } from "../types"
 import { Action } from "./Action"
 import { Clip, Picture } from "./media"
+import { Chat, Sticker } from "./scenes"
 
 const str = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback)
 
@@ -158,4 +159,6 @@ export const BUILTIN: Record<string, React.ComponentType<OverlayProps>> = {
   action: Action,
   image: Picture,
   video: Clip,
+  sticker: Sticker,
+  chat: Chat,
 }

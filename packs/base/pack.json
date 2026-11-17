@@ -2,11 +2,11 @@
   "format": "cutroom-pack-v1",
   "id": "base",
   "name": "Базовый",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "cutroom": 1,
-  "description": "Плотный разговорный монтаж для Shorts, Reels и TikTok: быстрый старт, крупные субтитры по словам, акценты наездами и ключевыми словами.",
+  "description": "Плотный разговорный монтаж для Shorts, Reels и TikTok: крупные субтитры по словам, акценты наездами, четыре стиля графики и библиотека объёмных иллюстраций предметов и людей.",
   "author": "Cutroom",
-  "license": "MIT; шрифт Montserrat — SIL OFL 1.1",
+  "license": "MIT; шрифты Montserrat, Manrope, PT Serif, Unbounded — SIL OFL 1.1; иллюстрации Fluent Emoji 3D — MIT, © Microsoft",
   "theme": {
     "accent": "#FFD84D",
     "accentForeground": "#111111",
@@ -19,11 +19,167 @@
     "displayFont": "Montserrat",
     "captionFont": "Montserrat"
   },
-  "captions": { "style": "plain", "position": "bottom", "wordsPerPage": 3, "uppercase": false },
+  "captions": {
+    "style": "plain",
+    "position": "bottom",
+    "wordsPerPage": 3,
+    "uppercase": false
+  },
   "fonts": [
-    { "family": "Montserrat", "file": "fonts/montserrat-cyrillic-800-normal.woff2", "weight": 800, "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116" },
-    { "family": "Montserrat", "file": "fonts/montserrat-latin-800-normal.woff2", "weight": 800, "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" },
-    { "family": "Montserrat", "file": "fonts/montserrat-cyrillic-900-normal.woff2", "weight": 900, "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116" },
-    { "family": "Montserrat", "file": "fonts/montserrat-latin-900-normal.woff2", "weight": 900, "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }
-  ]
+    {
+      "family": "Montserrat",
+      "file": "fonts/montserrat-cyrillic-800-normal.woff2",
+      "weight": 800,
+      "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+    },
+    {
+      "family": "Montserrat",
+      "file": "fonts/montserrat-latin-800-normal.woff2",
+      "weight": 800,
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "Montserrat",
+      "file": "fonts/montserrat-cyrillic-900-normal.woff2",
+      "weight": 900,
+      "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+    },
+    {
+      "family": "Montserrat",
+      "file": "fonts/montserrat-latin-900-normal.woff2",
+      "weight": 900,
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "Manrope",
+      "file": "fonts/manrope-cyrillic-600-normal.woff2",
+      "weight": 600,
+      "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+    },
+    {
+      "family": "Manrope",
+      "file": "fonts/manrope-latin-600-normal.woff2",
+      "weight": 600,
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "Manrope",
+      "file": "fonts/manrope-cyrillic-800-normal.woff2",
+      "weight": 800,
+      "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+    },
+    {
+      "family": "Manrope",
+      "file": "fonts/manrope-latin-800-normal.woff2",
+      "weight": 800,
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "PT Serif",
+      "file": "fonts/pt-serif-cyrillic-700-normal.woff2",
+      "weight": 700,
+      "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+    },
+    {
+      "family": "PT Serif",
+      "file": "fonts/pt-serif-latin-700-normal.woff2",
+      "weight": 700,
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "Unbounded",
+      "file": "fonts/unbounded-cyrillic-700-normal.woff2",
+      "weight": 700,
+      "unicodeRange": "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+    },
+    {
+      "family": "Unbounded",
+      "file": "fonts/unbounded-latin-700-normal.woff2",
+      "weight": 700,
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    }
+  ],
+  "defaultLook": "night",
+  "looks": {
+    "night": {
+      "name": "Ночь",
+      "description": "тёмный фон, белые карточки, жёлтый акцент; плотный, контрастный, для быстрых роликов",
+      "theme": {
+        "background": "#0E0F12",
+        "deep": "#07080A",
+        "foreground": "#F7F7F5",
+        "mute": "#A3A7AF",
+        "line": "#2A2D34",
+        "card": "#FFFFFF",
+        "cardForeground": "#111111",
+        "accent": "#FFD84D",
+        "accentForeground": "#111111",
+        "accent2": "#7CC4FF",
+        "radius": 22,
+        "displayFont": "Montserrat",
+        "captionFont": "Montserrat",
+        "font": "Inter Variable"
+      }
+    },
+    "paper": {
+      "name": "Бумага",
+      "description": "тёплый светлый фон, засечки в заголовках, коралловый акцент; спокойный, редакторский, для объяснений и историй",
+      "theme": {
+        "background": "#F3EFE6",
+        "deep": "#E7E0D2",
+        "foreground": "#1C1B19",
+        "mute": "#6F6A61",
+        "line": "#D6CFC1",
+        "card": "#FFFFFF",
+        "cardForeground": "#1C1B19",
+        "accent": "#E2553A",
+        "accentForeground": "#FFFFFF",
+        "accent2": "#2F6F5E",
+        "radius": 14,
+        "displayFont": "PT Serif",
+        "captionFont": "Montserrat",
+        "font": "Manrope"
+      }
+    },
+    "clean": {
+      "name": "Чистый",
+      "description": "белый фон, графитовый текст, синий акцент, тонкие линии; интерфейсы, продукты, инструкции",
+      "theme": {
+        "background": "#FFFFFF",
+        "deep": "#F1F3F6",
+        "foreground": "#111418",
+        "mute": "#5E6672",
+        "line": "#DDE1E7",
+        "card": "#F6F7F9",
+        "cardForeground": "#111418",
+        "accent": "#2F5BFF",
+        "accentForeground": "#FFFFFF",
+        "accent2": "#12A37A",
+        "radius": 18,
+        "displayFont": "Manrope",
+        "captionFont": "Montserrat",
+        "font": "Manrope"
+      }
+    },
+    "neon": {
+      "name": "Неон",
+      "description": "глубокий синий фон, лаймовый акцент и розовый второй; энергичный, игровой, для техно и мемных тем",
+      "theme": {
+        "background": "#0B0D1A",
+        "deep": "#05060E",
+        "foreground": "#F2F4FF",
+        "mute": "#9096C2",
+        "line": "#262B4D",
+        "card": "#161A33",
+        "cardForeground": "#F2F4FF",
+        "accent": "#B8FF3C",
+        "accentForeground": "#0B0D1A",
+        "accent2": "#FF5FD2",
+        "radius": 20,
+        "displayFont": "Unbounded",
+        "captionFont": "Montserrat",
+        "font": "Manrope"
+      }
+    }
+  }
 }

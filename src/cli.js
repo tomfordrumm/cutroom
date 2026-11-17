@@ -5,8 +5,10 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { buildCut, exists, loadVersion, readJson } from "./cut.js";
-import { prepareGraphics, readGraphics, renderStills, reviewGraphics } from "./graphics.js";
+import { prepareGraphics, readGraphics, renderIllustrationsSheet, renderMovesSheet, renderStills, reviewGraphics } from "./graphics.js";
 import { checkScenes } from "./scenes.js";
+import { checkClip, clipStills, listClips, newClip, refreshLook, renderClip, runInClip } from "./clips.js";
+import { enabledEngines } from "./engines.js";
 
 const HELP = `Инструменты монтажёра Cutroom. Запускать в папке версии.
 
@@ -16,8 +18,22 @@ const HELP = `Инструменты монтажёра Cutroom. Запуска�
   cutroom gfx check           проверить graphics.json и показать, где окажется графика
   cutroom gfx still <t> [t…]  кадры с графикой → frames/gfx-<t>.png
   cutroom gfx review          проверить раскладку каждого элемента: лицо, субтитры,
-                              безопасная зона площадки → gfx-review.json и лист
-                              кадров frames/review-sheet-1.jpg; код 2 при ошибках
+                              безопасная зона площадки → gfx-review.json, лист
+                              элементов frames/review-sheet-1.jpg и лист сцен
+                              frames/scenes-sheet-1.jpg (начало, середина, конец);
+                              код 2 при ошибках
+  cutroom gfx moves           лист библиотеки движений → frames/moves-sheet.jpg
+  cutroom gfx illustrations   листы иллюстраций пакета с id → frames/illustrations-*.jpg
+
+Клипы на других движках (полноэкранная сцена отдельным видео, guide/clips.md):
+  cutroom clip list                          клипы версии и включённые движки
+  cutroom clip new <имя> --engine <движок> --duration <с>
+                                             проект клипа в clips/<имя>/ под размер ролика
+  cutroom clip check <имя>                   проверка композиции средствами движка
+  cutroom clip look <имя>                    обновить look.css после смены стиля ролика
+  cutroom clip still <имя> <с> [с…]          кадры клипа → clips/<имя>/stills/
+  cutroom clip render <имя> [--alpha]        рендер → clips/<имя>.mp4 (.webm с прозрачностью)
+  cutroom clip run <имя> -- <команда…>       команда движка в папке клипа
 
 <t> — секунды склейки (что видит автор); s12.5 — секунды исходника.`;
 
@@ -78,7 +94,7 @@ async function main([command, sub, ...rest]) {
     await needCut(dir);
     if (!(await readGraphics(dir))) throw new Error("Нет graphics.json.");
     const prepared = await prepareGraphics(dir, version.media.duration);
-    console.log(`graphics.json в порядке: элементов ${prepared.overlays.length}, звуков ${prepared.audio.length}, субтитры ${prepared.graphics.captions ? `${prepared.graphics.captions.style}, ${prepared.graphics.captions.position}` : "нет"}. Пакет вкуса: ${prepared.pack ? `${prepared.pack.name} ${prepared.pack.version}` : "нет"}.`);
+    console.log(`graphics.json в порядке: элементов ${prepared.overlays.length}, звуков ${prepared.audio.length}, субтитры ${prepared.graphics.captions ? `${prepared.graphics.captions.style}, ${prepared.graphics.captions.position}` : "нет"}. Пакет вкуса: ${prepared.pack ? `${prepared.pack.name} ${prepared.pack.version}` : "нет"}${prepared.graphics.look ? `, стиль ${prepared.graphics.look} (${prepared.pack.looks[prepared.graphics.look].name})` : ""}.`);
     for (const o of prepared.overlays) console.log(`  ${o.id} ${o.type}${o.component ? `/${o.component}` : ""}: ${fmt(o.programStart)}–${fmt(o.programEnd)} склейки ← ${o.start}–${o.end} исходника  «${o.label}»`);
     for (const a of prepared.audio) {
       // The agent's multipliers as written; the linear levels come from the author's settings.
@@ -87,12 +103,76 @@ async function main([command, sub, ...rest]) {
       console.log(`  ${a.id} ${a.type}: ${where}  ${a.file}`);
     }
     for (const warning of prepared.warnings) console.log(`  ! ${warning}`);
+    // A clip shorter than its place in the cut ends early and leaves an empty frame.
+    const clips = Object.fromEntries((await listClips(dir)).map((c) => [c.name, c]));
+    for (const o of prepared.overlays.filter((x) => x.type === "video" && String(x.props.file).startsWith("clips/"))) {
+      const clip = clips[path.basename(String(o.props.file)).replace(/\.(mp4|webm)$/, "")];
+      const length = o.programEnd - o.programStart;
+      if (clip && clip.duration + 0.05 < length - Number(o.props.from ?? 0)) console.log(`  ! ${o.id}: клип ${clip.name} идёт ${clip.duration} с, а место в склейке ${length.toFixed(2)} с — в конце будет пустой кадр. Удлини клип или сократи элемент.`);
+    }
     const sceneReview = await checkScenes(dir, prepared.graphics);
     if (sceneReview.scenes.length) console.log(`\nКарта сцен: ${sceneReview.scenes.length}.`);
     if (sceneReview.problems.length) {
       console.log("\nКарта сцен и текст на экране — исправь:");
       for (const problem of sceneReview.problems) console.log(`  ! ${problem}`);
     } else if (sceneReview.scenes.length) console.log("Текст на экране не повторяет речь.");
+    if (sceneReview.warnings?.length) {
+      console.log("\nПосмотри и реши:");
+      for (const warning of sceneReview.warnings) console.log(`  ? ${warning}`);
+    }
+    return;
+  }
+
+  if (command === "clip") {
+    const [name, ...args] = rest;
+    const io = { out: process.stdout, err: process.stderr };
+    const flag = (key) => { const i = args.indexOf(key); return i >= 0 ? args[i + 1] : undefined; };
+    if (sub === "list" || !sub) {
+      const clips = await listClips(dir);
+      console.log(`Движки: ${enabledEngines().join(", ") || "ни одного не включено в настройках Cutroom"}.`);
+      if (!clips.length) console.log("Клипов нет.");
+      for (const c of clips) console.log(`  ${c.name} — ${c.engine}, ${c.duration} с, ${c.width}×${c.height} @ ${c.fps}: ${c.rendered.join(", ") || "не отрендерен"}`);
+      return;
+    }
+    if (!name) throw new Error("Укажите имя клипа.");
+    if (sub === "new") {
+      const clip = await newClip(dir, name, { engine: flag("--engine"), duration: flag("--duration") });
+      console.log(`Клип ${name}: clips/${name}/, ${clip.engine}, ${clip.duration} с, ${clip.width}×${clip.height} @ ${clip.fps} к/с.`);
+      console.log(`Стиль ролика${clip.look ? ` «${clip.look}»` : ""}: clips/${name}/look.css — шрифты пакета и цвета переменными (var(--background), var(--accent), var(--display-font)…), уже подключён.`);
+      console.log(`Правила движка: ${clip.guide}. Порядок работы с клипом: guide/clips.md.`);
+      return;
+    }
+    if (sub === "look") { console.log(`look.css обновлён: ${(await refreshLook(dir, name)) ?? "тема пакета"}.`); return; }
+    if (sub === "check") { process.exitCode = (await checkClip(dir, name, io)).code ? 2 : 0; return; }
+    if (sub === "still") { const r = await clipStills(dir, name, args, io); if (r.code) process.exitCode = 2; else console.log(`Кадры: clips/${name}/stills/`); return; }
+    if (sub === "render") {
+      const r = await renderClip(dir, name, { alpha: args.includes("--alpha"), ...io });
+      console.log(`\nГотово: ${r.file}. В graphics.json: { "type": "video", "start": …, "end": …, "props": { "file": "${r.file}" } } — длина элемента в склейке около ${r.duration} с.`);
+      return;
+    }
+    if (sub === "run") {
+      const at = args.indexOf("--");
+      const r = await runInClip(dir, name, at >= 0 ? args.slice(at + 1) : args, io);
+      process.exitCode = r.code;
+      return;
+    }
+    throw new Error(`Неизвестная команда clip ${sub}.\n\n${HELP}`);
+  }
+
+  if (command === "gfx" && sub === "moves") {
+    const { sheet, moves } = await renderMovesSheet(dir, { onProgress: (message) => process.stderr.write(`${message}…\n`) });
+    console.log(`Лист движений: ${sheet} — строка на движение, шесть кадров. Открой и выбери по картинке.`);
+    for (const m of moves) console.log(`  ${m.name} — ${m.say}`);
+    console.log("Как вызывать: guide/motion.md.");
+    return;
+  }
+
+  if (command === "gfx" && sub === "illustrations") {
+    const { sheets, count } = await renderIllustrationsSheet(dir);
+    if (!count) { console.log("В пакете вкуса нет иллюстраций."); return; }
+    console.log(`Иллюстраций ${count}. Листы по группам (подпись под картинкой — её id):`);
+    for (const sheet of sheets) console.log(`  ${sheet.file} — ${sheet.group}, ${sheet.count}`);
+    console.log("Описания — illustrations.md.");
     return;
   }
 
@@ -125,6 +205,9 @@ async function main([command, sub, ...rest]) {
       for (const sample of o.samples) for (const problem of sample.problems) console.log(`  ${sample.seconds.toFixed(2)} с склейки: ${problem}`);
     }
     if (report.sheets.length) console.log(`Лист кадров по порядку элементов: ${report.sheets.join(", ")} — открой и посмотри.`);
+    if (report.sceneSheets?.length) console.log(`Сцены в движении (начало, середина, конец; строка на сцену): ${report.sceneSheets.join(", ")}.`);
+    for (const t of report.transitions ?? []) if (t.warning) console.log(`  ? ${t.warning}`);
+    console.log("\nТеперь строгий критик (AGENTS.md): посмотри листы как зритель, который видит ролик впервые на телефоне, найди слабые места, исправь и запиши в critique.md.");
     if (report.status === "fail") {
       console.log("\nЕсть ошибки раскладки: поправь position, размеры или время элемента и запусти проверку снова.");
       process.exitCode = 2;

@@ -18,6 +18,7 @@ function Media({ kind, props, theme, u, width }: MediaProps) {
   const fit = props.fit === "contain" ? "contain" : "cover"
   const zone = useZoneStyle(full ? "auto" : props.position)
   const { enter, opacity } = useEnterExit()
+  const transparent = props.transparent === true
   const element = kind === "image"
     ? <Img src={src} style={{ width: "100%", height: "100%", objectFit: fit, display: "block" }} />
     : (
@@ -26,6 +27,7 @@ function Media({ kind, props, theme, u, width }: MediaProps) {
         trimBefore={Math.round(num(props.from, 0) * fps)}
         volume={Math.min(1, Math.max(0, num(props.volume, 0)))}
         muted={num(props.volume, 0) <= 0}
+        transparent={transparent}
         style={{ width: "100%", height: "100%", objectFit: fit, display: "block" }}
       />
     )
@@ -35,7 +37,7 @@ function Media({ kind, props, theme, u, width }: MediaProps) {
     const fade = Math.min(interpolate(frame, [0, 6], [0, 1], clamp), interpolate(frame, [durationInFrames - 6, durationInFrames], [1, 0], clamp))
     const push = kind === "image" && props.motion !== "none" ? interpolate(frame, [0, durationInFrames], [1, 1.06], clamp) : 1
     return (
-      <AbsoluteFill style={{ background: fit === "contain" ? theme.background : "#000", opacity: fade }}>
+      <AbsoluteFill style={{ background: transparent ? "transparent" : fit === "contain" ? theme.background : "#000", opacity: transparent ? 1 : fade }}>
         <AbsoluteFill style={{ transform: `scale(${push})` }}>{element}</AbsoluteFill>
       </AbsoluteFill>
     )

@@ -3,6 +3,8 @@
 
   vision.py faces MODEL WIDTH HEIGHT FPS   raw bgr24 frames on stdin -> one JSON line per frame
   vision.py bbox PNG [PNG...]              bounding box of visible pixels of each RGBA PNG
+  vision.py carry A B [A B ...]            share of A's content still in place in B, per pair
+  vision.py sheet OUT COLS IMG:LABEL ...   contact sheet of pictures with labels under them
 """
 import json
 import sys
@@ -57,11 +59,69 @@ def bbox(files):
     print(json.dumps(result))
 
 
+def _content(gray):
+    """Pixels that are not the frame's ground: far from its median value."""
+    ground = float(np.median(gray))
+    return np.abs(gray.astype(np.int16) - ground) > 28
+
+
+def carry(files):
+    """For each pair (last frame of a scene, first of the next): how much of what
+    was on screen is still there. A slide change scores near 0."""
+    result = []
+    for a_file, b_file in zip(files[0::2], files[1::2]):
+        a, b = cv2.imread(a_file, cv2.IMREAD_GRAYSCALE), cv2.imread(b_file, cv2.IMREAD_GRAYSCALE)
+        if a is None or b is None:
+            result.append(None)
+            continue
+        width = 160
+        a = cv2.resize(a, (width, int(a.shape[0] * width / a.shape[1])), interpolation=cv2.INTER_AREA)
+        b = cv2.resize(b, (a.shape[1], a.shape[0]), interpolation=cv2.INTER_AREA)
+        content = _content(a)
+        if content.sum() < 20:
+            result.append(1.0)
+            continue
+        kept = (np.abs(a.astype(np.int16) - b.astype(np.int16)) < 22) & content & _content(b)
+        result.append(round(float(kept.sum() / content.sum()), 3))
+    print(json.dumps(result))
+
+
+def sheet(out, cols, items):
+    cell_w, cell_h, pic = 220, 250, 180
+    rows = (len(items) + cols - 1) // cols
+    canvas = np.full((rows * cell_h + 20, cols * cell_w + 20, 3), 245, np.uint8)
+    for n, item in enumerate(items):
+        file, _, label = item.partition(":")
+        image = cv2.imread(file, cv2.IMREAD_UNCHANGED)
+        if image is None:
+            continue
+        if image.ndim == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA)
+        if image.shape[2] == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+        k = pic / max(image.shape[0], image.shape[1])
+        image = cv2.resize(image, (max(1, int(image.shape[1] * k)), max(1, int(image.shape[0] * k))), interpolation=cv2.INTER_AREA)
+        x = 10 + (n % cols) * cell_w + (cell_w - image.shape[1]) // 2
+        y = 10 + (n // cols) * cell_h + (pic - image.shape[0]) // 2 + 8
+        alpha = image[:, :, 3:4].astype(np.float32) / 255
+        region = canvas[y:y + image.shape[0], x:x + image.shape[1]]
+        region[:] = (image[:, :, :3] * alpha + region * (1 - alpha)).astype(np.uint8)
+        text = label[:26]
+        size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+        cv2.putText(canvas, text, (10 + (n % cols) * cell_w + (cell_w - size[0]) // 2, 10 + (n // cols) * cell_h + pic + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (40, 40, 40), 1, cv2.LINE_AA)
+    cv2.imwrite(out, canvas, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    print(json.dumps({"file": out, "count": len(items)}))
+
+
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else ""
     if command == "faces":
         faces(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]))
     elif command == "bbox":
         bbox(sys.argv[2:])
+    elif command == "carry":
+        carry(sys.argv[2:])
+    elif command == "sheet":
+        sheet(sys.argv[2], int(sys.argv[3]), sys.argv[4:])
     else:
         sys.exit(__doc__)

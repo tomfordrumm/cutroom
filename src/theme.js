@@ -1,5 +1,7 @@
 // Theme and captions settings, shared by graphics.json and taste packs.
-export const THEME_COLORS = ["accent", "accentForeground", "background", "foreground", "card", "cardForeground"];
+// accent2: a rare partner of the accent; deep: a second ground (the far plane,
+// a well under cards); line: hairlines and card edges; mute: secondary text.
+export const THEME_COLORS = ["accent", "accentForeground", "accent2", "background", "deep", "foreground", "mute", "line", "card", "cardForeground"];
 export const THEME_FONTS = ["font", "displayFont", "captionFont"];
 export const CAPTION_STYLES = ["pill", "plain", "off"];
 export const CAPTION_POSITIONS = ["bottom", "center", "auto"];

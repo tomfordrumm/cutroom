@@ -13,7 +13,7 @@
 //     build.json     how it was built
 //     out/cut.mp4 (no graphics), out/preview.mp4, out/report.json, out/final.mp4
 import { createHash } from "node:crypto";
-import { copyFile, cp, mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, readdir, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { analyze, createReport } from "@openroughcut/core";
 import { assertSameSource, buildReviewPacket, DECISIONS_FORMAT, sourceFingerprint } from "@openroughcut/core/agent-review.js";
@@ -31,7 +31,8 @@ import { DEFAULT_PACK, resolvePack, snapshotPack, versionPack } from "./packs.js
 import { activeEntries, dictionaryMarkdown, ingestProposals, packetWithDictionary, whisperPrompt } from "./dictionary.js";
 import { ensureModels, whisperModelId } from "./models.js";
 import { masterAudio, masterGainDb, measureLoudness, normalizeSound } from "./sound.js";
-import { checkScenes } from "./scenes.js";
+import { checkScenes, critiqueProblems } from "./scenes.js";
+import { enginesSnapshot, engineGuide, HYPERFRAMES } from "./engines.js";
 import { ingestRemember } from "./proposals.js";
 import { recordRun } from "./usage.js";
 import { listSources } from "./sources.js";
@@ -169,7 +170,70 @@ function layoutMarkdown(media, faces, pack) {
     "",
     pack ? `${pack.name} ${pack.version}: \`pack/instructions/README.md\`. Компоненты пакета: ${pack.components.join(", ") || "нет"}${Object.keys(pack.replaces).length ? `; заменяют встроенные: ${Object.entries(pack.replaces).map(([type, name]) => `${type} → ${name}`).join(", ")}` : ""}.` : "Пакет не подключён: только встроенные элементы и тема по умолчанию.",
     "",
+    ...looksMarkdown(pack),
+    "## Иллюстрации",
+    "",
+    pack?.illustrations?.length ? `В пакете ${pack.illustrations.length} готовых картинок предметов, людей и эмоций: список — \`illustrations.md\`, листы с id — \`cutroom gfx illustrations\`.` : "В пакете нет готовых иллюстраций: персонажей и предметы не рисуй, показывай интерфейс из набора, материалы автора или типографику.",
+    "",
   ].join("\n");
+}
+
+function looksMarkdown(pack) {
+  const looks = Object.entries(pack?.looks ?? {});
+  if (!looks.length) return [];
+  return [
+    "## Стили пакета",
+    "",
+    "Стиль задаёт цвета и шрифты всей графики. Выбери один на ролик по теме и брифу и запиши в `graphics.json → look`. Без `look` действует стиль по умолчанию. Если автор назвал стиль или он есть в `taste.md`, бери его.",
+    "",
+    ...looks.map(([id, look]) => `- \`${id}\`${id === pack.defaultLook ? " (по умолчанию)" : ""} — ${look.name}${look.description ? `: ${look.description}` : ""}. Фон ${look.theme.background ?? "—"}, акцент ${look.theme.accent ?? "—"}, заголовки ${look.theme.displayFont ?? "—"}.`),
+    "",
+  ];
+}
+
+/**
+ * engines.md: which clip engines the agent may use here, and their skills
+ * where Claude Code (.claude/skills) and Codex (.agents/skills) find them.
+ */
+async function writeEngineContext(dir) {
+  const engines = enginesSnapshot().engines.filter((e) => e.enabled);
+  const lines = ["# Движки клипов", ""];
+  if (!engines.length) {
+    lines.push("В этом Cutroom движки клипов выключены: вся графика — в `graphics.json` и своих компонентах Remotion.");
+    await writeFile(path.join(dir, "engines.md"), `${lines.join("\n")}\n`);
+    return;
+  }
+  lines.push("Полноэкранную сцену с настоящей анимацией можно собрать отдельным клипом на другом движке и поставить в ролик видеовставкой. Как и когда — `guide/clips.md`.", "");
+  for (const engine of engines) {
+    if (engine.id === "hyperframes") lines.push(`- **hyperframes** — HyperFrames ${engine.version} (${engine.license}): HTML, CSS и GSAP, каталог готовых блоков, прозрачный фон для графики поверх автора. Навыки: \`hyperframes\`, \`hyperframes-cli\`, \`hyperframes-registry\` (\`.claude/skills/\`).`);
+    if (engine.id === "onetake") lines.push(`- **onetake** — ${engine.edition === "pro" ? "onetake Pro" : "onetake, бесплатная версия"} (${engine.edition === "pro" ? "коммерческая лицензия" : engine.license}): моушен-фильм из одной композиции, библиотека движений, перенос между битами, проверка ритма. Навык \`onetake\` (\`.claude/skills/onetake/\`), программы — \`$ONETAKE/scripts/\` через \`cutroom clip run\`.${engine.edition === "pro" ? "" : " Условия бесплатной версии автор принял в настройках, использовать её можно."}`);
+  }
+  await writeFile(path.join(dir, "engines.md"), `${lines.join("\n")}\n`);
+  const links = engines.flatMap((engine) => engine.id === "hyperframes"
+    ? ["hyperframes", "hyperframes-cli", "hyperframes-registry"].map((name) => [name, path.join(HYPERFRAMES.skills, name)])
+    : [["onetake", engineGuide("onetake")]]);
+  for (const root of [".claude/skills", ".agents/skills"]) {
+    await mkdir(path.join(dir, root), { recursive: true });
+    for (const [name, target] of links) {
+      if (!(await exists(target))) continue;
+      await rm(path.join(dir, root, name), { recursive: true, force: true });
+      await symlink(target, path.join(dir, root, name));
+    }
+  }
+}
+
+/** The pack's ready pictures, by group, for the agent. */
+function illustrationsMarkdown(pack) {
+  const items = pack?.illustrations ?? [];
+  if (!items.length) return "# Иллюстрации\n\nВ пакете вкуса нет готовых иллюстраций.\n";
+  const lines = ["# Иллюстрации пакета", "", `${pack.illustrationsInfo?.style ? `${pack.illustrationsInfo.style}. ` : ""}Ставь их встроенным элементом \`sticker\` (\`props.id\`) или в своём компоненте: \`<Illustration id="…" size={…} />\` из модуля \`cutroom\`. Посмотреть картинки: \`cutroom gfx illustrations\` или файлы в \`pack/\`.`, ""];
+  for (const group of [...new Set(items.map((i) => i.group ?? "прочее"))]) {
+    lines.push(`## ${group}`, "");
+    for (const item of items.filter((i) => (i.group ?? "прочее") === group)) lines.push(`- \`${item.id}\` — ${item.description}`);
+    lines.push("");
+  }
+  if (pack.illustrationsInfo?.license) lines.push(`Лицензия: ${pack.illustrationsInfo.license}.`, "");
+  return lines.join("\n");
 }
 
 async function writeAgentContext(video, dir, { packet, media, sounds, faces, pack, sourcePath, previous, comments, agent, dictionary, materials }) {
@@ -181,6 +245,14 @@ async function writeAgentContext(video, dir, { packet, media, sounds, faces, pac
   await writeFile(path.join(dir, "transcript.md"), transcriptMarkdown(packet, sounds));
   if (faces) await writeJson(path.join(dir, "faces.json"), faces);
   await writeFile(path.join(dir, "layout.md"), layoutMarkdown(media, faces, pack));
+  await writeFile(path.join(dir, "illustrations.md"), illustrationsMarkdown(pack));
+  await writeEngineContext(dir);
+  // Reference guides the agent opens when it needs them: guide/motion.md, guide/kit.md…
+  const guides = (await readdir(path.join(config.paths.instructions, "guide")).catch(() => [])).filter((name) => name.endsWith(".md"));
+  if (guides.length) {
+    await mkdir(path.join(dir, "guide"), { recursive: true });
+    for (const name of guides) await copyFile(path.join(config.paths.instructions, "guide", name), path.join(dir, "guide", name));
+  }
   await writeFile(path.join(dir, "dictionary.md"), dictionaryMarkdown(dictionary.entries, dictionary.applied, dictionary.prompt));
   await writeFile(path.join(dir, "media.md"), mediaMarkdown(materials));
   await writeJson(path.join(dir, "request.json"), {
@@ -199,7 +271,8 @@ async function writeAgentContext(video, dir, { packet, media, sounds, faces, pac
       graphics: "graphics.json",
       reply: "reply.md",
       dictionary: "dictionary.json",
-    remember: "remember.json",
+      remember: "remember.json",
+      critique: "critique.md",
     },
     decisionsTemplate: { format: DECISIONS_FORMAT, review: "review.json", keep: [], remove: [], cut: [], notes: "" },
   });
@@ -233,6 +306,8 @@ async function inheritPrevious(video, dir) {
     await writeJson(path.join(dir, "graphics.json"), graphics);
   }
   if (await exists(path.join(from, "custom"))) await cp(path.join(from, "custom"), path.join(dir, "custom"), { recursive: true });
+  // Clips on other engines: their projects and renders, so graphics.json still finds them.
+  if (await exists(path.join(from, "clips"))) await cp(path.join(from, "clips"), path.join(dir, "clips"), { recursive: true });
   // Files the previous graphics used stay available even if removed from the library since.
   if (await exists(path.join(from, "media"))) await cp(path.join(from, "media"), path.join(dir, "media"), { recursive: true });
 }
@@ -489,7 +564,8 @@ async function sceneCheck(dir, duration) {
     const raw = await readGraphics(dir);
     if (!raw) return { problems: [], scenes: [] };
     const graphics = validateGraphics(raw, { duration, custom: await customComponents(dir), pack: await versionPack(dir), media: { videoId: await versionVideoId(dir), versionDir: dir } });
-    return await checkScenes(dir, graphics);
+    const result = await checkScenes(dir, graphics);
+    return { ...result, problems: [...result.problems, ...(await critiqueProblems(dir, result.scenes.length))] };
   } catch (error) {
     return { problems: [error.message], scenes: [] };
   }

@@ -14,6 +14,16 @@
 //   - text in custom components must be declared in the map.
 // Scenes where the captions are hidden (typing the spoken text) are exempt
 // from the retelling and budget rules: there the text is the action.
+//
+// Flow: full-frame scenes that follow each other back to back must carry —
+// name in `carry` what survives the boundary and grows into the next scene —
+// or they read as slides however good each one is. Scene lengths that are all
+// the same read as a metronome (a warning).
+//
+// Drawing: characters and objects are not drawn from SVG shapes in custom
+// components; they come from the pack's illustrations, the interface kit or
+// the author's material. A component named like a character that draws with
+// many primitives fails the check.
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { loadVersion } from "./cut.js";
@@ -40,13 +50,25 @@ export const MAX_WORDS = 10;
 const RETELL_MIN_WORDS = 3;
 const RETELL_SHARE = 0.6;
 const SPEECH_MARGIN = 1.5;
+// Back-to-back full-frame scenes closer than this (source seconds) need a carry.
+const CARRY_GAP = 0.6;
+// Coefficient of variation of scene lengths below this reads as a metronome.
+const CADENCE_CV = 0.2;
+const CADENCE_MIN_SCENES = 5;
+// A custom component named like a character drawing this many shapes is a hand-drawn character.
+const CHARACTER_SHAPES = 8;
+const HEAVY_SHAPES = 70;
+const CHARACTER_WORDS = /^(robot|person|people|human|man|woman|boy|girl|kid|child|student|teacher|pupil|character|mascot|face|head|body|hand|arm|leg|eye|mouth|cat|dog|bird|animal|creature|monster|figure|avatar|guy|bot|человек|робот)s?$/i;
+const SHAPES = /<(circle|ellipse|rect|path|polygon|polyline|line)\b/g;
 
 // Overlays that build a scene need one in the map: cards, lists, numbers,
 // action scenes, custom components and anything over the whole frame. A hook
 // plate, a callout, a pack accent, zooms and the author's media stay the
 // pack's call.
-const SCENE_TYPES = new Set(["fullscreen", "list", "stat", "action", "custom"]);
-const needsScene = (overlay, pack) => SCENE_TYPES.has(overlay.type) || (overlay.type !== "image" && overlay.type !== "video" && isFullFrame(overlay, pack));
+const SCENE_TYPES = new Set(["fullscreen", "list", "stat", "action", "chat", "sticker", "custom"]);
+// A clip rendered on another engine is the agent's graphic, not the author's footage.
+const isClip = (overlay) => overlay.type === "video" && String(overlay.props?.file ?? "").startsWith("clips/");
+const needsScene = (overlay, pack) => SCENE_TYPES.has(overlay.type) || isClip(overlay) || (overlay.type !== "image" && overlay.type !== "video" && isFullFrame(overlay, pack));
 const TEXT_KEYS = ["text", "title", "kicker", "body", "label", "subtitle", "value", "caption", "items", "subject", "action", "object", "result"];
 
 const FUNCTION_WORDS = new Set(`
@@ -71,14 +93,18 @@ export async function readScenes(dir) {
 /** Strings a built-in or pack overlay puts on screen. */
 export function overlayText(overlay) {
   const props = overlay.props ?? {};
-  return TEXT_KEYS.flatMap((key) => {
+  const messages = overlay.type === "chat" && Array.isArray(props.messages) ? props.messages.map((m) => clean(m?.text)).filter(Boolean) : [];
+  return [...messages, ...TEXT_KEYS.flatMap((key) => {
     const value = props[key];
     if (typeof value === "string") return [value];
     if (Array.isArray(value)) return value.filter((v) => typeof v === "string");
     if (value && typeof value === "object" && typeof value.label === "string") return [value.label];
     return [];
-  }).map(clean).filter(Boolean);
+  }).map(clean).filter(Boolean)];
 }
+
+/** Text a scene shows as its own words, not as the content of a drawn interface (a chat's messages). */
+const budgetText = (overlay) => (overlay.type === "chat" ? overlayText({ ...overlay, props: { ...overlay.props, messages: [] } }) : overlayText(overlay));
 
 /** Cyrillic text in custom components: string literals and JSX text. */
 export async function customText(dir) {
@@ -130,6 +156,7 @@ function validScene(raw, index, problems, legacy) {
     device: clean(raw?.device),
     text: Array.isArray(raw?.text) ? raw.text.map(clean).filter(Boolean) : [],
     overlays: Array.isArray(raw?.overlays) ? raw.overlays.map(clean).filter(Boolean) : [],
+    carry: clean(raw?.carry),
   };
   if (!Number.isFinite(scene.start) || !Number.isFinite(scene.end) || scene.end <= scene.start) problems.push(`${where}: start/end — секунды исходника, start < end.`);
   if (!legacy) {
@@ -168,19 +195,70 @@ function reviewVariety(scenes, overlaysOf) {
 }
 
 /**
+ * Back-to-back full-frame scenes must carry something across the boundary;
+ * scene lengths must not all be the same. Returns { problems, warnings }.
+ */
+export function reviewFlow(scenes, overlaysOf, pack) {
+  const problems = [], warnings = [];
+  const ordered = [...scenes].sort((a, b) => a.start - b.start);
+  const full = (scene) => overlaysOf(scene).some((o) => isFullFrame(o, pack));
+  for (let i = 0; i + 1 < ordered.length; i++) {
+    const a = ordered[i], b = ordered[i + 1];
+    if (b.start - a.end > CARRY_GAP || !full(a) || !full(b)) continue;
+    const shared = a.overlays.some((id) => b.overlays.includes(id));
+    if (shared || a.carry) continue;
+    problems.push(`${a.id} → ${b.id}: две полноэкранные сцены встык, одна просто сменяет другую, как слайд. Реши, что переживает границу и становится следующей сценой: тот же предмет меняет состояние, карточка вырастает в экран (morph), камера влетает в деталь (zoomThrough), сцена раскрывается из предмета (iris). Запиши это в carry сцены ${a.id} и сделай так в графике. Или верни автора в кадр между ними.`);
+  }
+  if (ordered.length >= CADENCE_MIN_SCENES) {
+    const lengths = ordered.map((s) => s.end - s.start);
+    const mean = lengths.reduce((x, y) => x + y, 0) / lengths.length;
+    const cv = Math.sqrt(lengths.reduce((x, y) => x + (y - mean) ** 2, 0) / lengths.length) / Math.max(mean, 1e-6);
+    if (cv < CADENCE_CV) warnings.push(`Сцены почти одной длины (${lengths.map((l) => l.toFixed(1)).join(", ")} с): это читается как метроном. Чередуй короткие удары и длинные удержания, длины должны отличаться в разы.`);
+  }
+  return { problems, warnings };
+}
+
+/**
+ * Characters and objects drawn from SVG shapes in custom components. `sources`:
+ * [{ file, code }]. Returns { problems, warnings }.
+ */
+export function reviewDrawings(sources, { illustrations = 0 } = {}) {
+  const problems = [], warnings = [];
+  for (const { file, code } of sources) {
+    const plain = code.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const shapes = (plain.match(SHAPES) ?? []).length;
+    // Each component's body runs from its definition to the next one.
+    const defs = [...plain.matchAll(/\b(?:function|const|let)\s+([A-Z][A-Za-z0-9]*)/g)].map((m) => ({ name: m[1], at: m.index }));
+    const drawn = defs.map((d, i) => ({ name: d.name, shapes: (plain.slice(d.at, defs[i + 1]?.at ?? plain.length).match(SHAPES) ?? []).length }));
+    const characters = drawn.filter((d) => d.shapes >= CHARACTER_SHAPES && d.name.split(/(?=[A-Z])/).some((part) => CHARACTER_WORDS.test(part)));
+    if (characters.length) {
+      const count = characters.reduce((sum, d) => sum + d.shapes, 0);
+      problems.push(`${file}: ${characters.map((d) => d.name).join(", ")} нарисован${characters.length > 1 ? "ы" : ""} из ${count} фигур SVG. Персонажей, людей, животных и предметы кодом не рисуй: так выходит любительская анимация. ${illustrations ? "Возьми готовую иллюстрацию пакета (sticker или <Illustration id> в компоненте, список в illustrations.md)" : "Покажи сам интерфейс из набора (окно, чат, документ), материал автора"} или реши сцену без персонажа: типографикой, одним предметом, который меняет состояние.`);
+    } else if (shapes > HEAVY_SHAPES) {
+      warnings.push(`${file}: ${shapes} фигур SVG. Если это рисунок предмета или персонажа, замени его иллюстрацией пакета или набором интерфейса; схемы, стрелки и выделения рисовать можно.`);
+    }
+  }
+  return { problems, warnings };
+}
+
+/**
  * Checks graphics against the scene map and the speech. `graphics` is the
  * validated graphics.json. Returns { problems, scenes }.
  */
-export function reviewScenes({ graphics, scenes: raw, speech, custom = [], pack = null }) {
+export function reviewScenes({ graphics, scenes: raw, speech, custom = [], pack = null, sources = [] }) {
   const problems = [];
+  const warnings = [];
+  const drawings = reviewDrawings(sources, { illustrations: pack?.illustrations?.length ?? 0 });
+  problems.push(...drawings.problems);
+  warnings.push(...drawings.warnings);
   const needing = (graphics?.overlays ?? []).filter((o) => needsScene(o, pack));
-  if (!needing.length) return { problems, scenes: [] };
+  if (!needing.length) return { problems, warnings, scenes: [] };
   if (!raw) {
     problems.push(`Нет scenes.json, а в graphics.json есть графика (${needing.map((o) => o.id).join(", ")}). Сначала напиши раскадровку: сквозной образ ролика, затем для каждой сцены — что на экране, что это даёт сверх голоса, приём и текст на экране.`);
-    return { problems, scenes: [] };
+    return { problems, warnings, scenes: [] };
   }
   const list = Array.isArray(raw) ? raw : raw.scenes;
-  if (!Array.isArray(list)) { problems.push("scenes.json: нужен массив scenes."); return { problems, scenes: [] }; }
+  if (!Array.isArray(list)) { problems.push("scenes.json: нужен массив scenes."); return { problems, warnings, scenes: [] }; }
   const legacy = !Array.isArray(raw) && raw.format === LEGACY_FORMAT;
   const scenes = list.map((s, i) => validScene(s, i, problems, legacy));
   if (!legacy && scenes.length >= 3 && !clean(raw?.thread)) {
@@ -192,7 +270,12 @@ export function reviewScenes({ graphics, scenes: raw, speech, custom = [], pack 
   for (const scene of scenes) for (const id of scene.overlays) if (!known.has(id)) problems.push(`${scene.id}: элемента ${id} нет в graphics.json.`);
   for (const overlay of needing) if (!sceneOf.has(overlay.id)) problems.push(`${overlay.id}: не входит ни в одну сцену scenes.json.`);
   const overlaysOf = (scene) => (graphics.overlays ?? []).filter((o) => scene.overlays.includes(o.id));
-  if (!legacy) problems.push(...reviewVariety(scenes, overlaysOf));
+  if (!legacy) {
+    problems.push(...reviewVariety(scenes, overlaysOf));
+    const flow = reviewFlow(scenes, overlaysOf, pack);
+    problems.push(...flow.problems);
+    warnings.push(...flow.warnings);
+  }
 
   for (const scene of scenes) {
     const overlays = overlaysOf(scene);
@@ -201,7 +284,10 @@ export function reviewScenes({ graphics, scenes: raw, speech, custom = [], pack 
     const typing = overlays.some((o) => o.props?.hideCaptions === true);
     const shown = [...new Set([...scene.text, ...overlays.flatMap(overlayText)])];
     if (typing) continue;
-    const count = shown.reduce((sum, text) => sum + words(text).length, 0);
+    // A chat's messages are the interface itself: they count for the retelling check, not for the budget.
+    const chatLines = new Set(overlays.filter((o) => o.type === "chat").flatMap((o) => (o.props?.messages ?? []).map((m) => clean(m?.text))));
+    const own = [...new Set([...scene.text.filter((t) => !chatLines.has(t)), ...overlays.flatMap(budgetText)])];
+    const count = own.reduce((sum, text) => sum + words(text).length, 0);
     if (count > MAX_WORDS) problems.push(`${scene.id}: на экране ${count} слов, можно до ${MAX_WORDS}. Покажи это картинкой, а слова оставь голосу и субтитрам.`);
     const from = Math.min(scene.start, ...overlays.map((o) => o.start)) - SPEECH_MARGIN;
     const to = Math.max(scene.end, ...overlays.map((o) => o.end)) + SPEECH_MARGIN;
@@ -226,13 +312,33 @@ export function reviewScenes({ graphics, scenes: raw, speech, custom = [], pack 
   if (undeclared.length) {
     problems.push(`В компонентах есть текст, которого нет в scenes.json (поле text сцены): ${undeclared.slice(0, 6).map((c) => `«${c.text}» (${c.file})`).join(", ")}${undeclared.length > 6 ? ` и ещё ${undeclared.length - 6}` : ""}.`);
   }
-  return { problems, scenes };
+  return { problems, warnings, scenes };
+}
+
+/** Source of the custom components: [{ file, code }]. */
+export async function customSources(dir) {
+  const folder = path.join(dir, "custom");
+  const names = (await readdir(folder).catch(() => [])).filter((n) => n.endsWith(".tsx")).sort();
+  return Promise.all(names.map(async (name) => ({ file: `custom/${name}`, code: await readFile(path.join(folder, name), "utf8") })));
+}
+
+/**
+ * The critic's note: critique.md names at least one weak spot the agent found
+ * on the review sheets and what it changed. Required when there are scenes.
+ */
+export async function critiqueProblems(dir, sceneCount) {
+  if (!sceneCount) return [];
+  const text = await readFile(path.join(dir, "critique.md"), "utf8").catch(() => "");
+  const bullets = text.split("\n").filter((line) => /^\s*(?:[-*•]|\d+[.)])\s+\S/.test(line));
+  if (!text.trim()) return ["Нет critique.md. После cutroom gfx review посмотри листы кадров как придирчивый зритель, который видит ролик впервые на телефоне, найди хотя бы одно слабое место, исправь его и запиши в critique.md (см. «Строгий критик» в AGENTS.md)."];
+  if (!bullets.length) return ["critique.md: запиши слабые места списком, по пункту на каждое: что не так, в какой сцене и что исправил."];
+  return [];
 }
 
 /** The scene check for a version folder, given its validated graphics. */
 export async function checkScenes(dir, graphics) {
   const { packet } = await loadVersion(dir);
   let scenes;
-  try { scenes = await readScenes(dir); } catch (error) { return { problems: [error.message], scenes: [] }; }
-  return reviewScenes({ graphics, scenes, speech: speechWords(packet), custom: await customText(dir), pack: await versionPack(dir) });
+  try { scenes = await readScenes(dir); } catch (error) { return { problems: [error.message], warnings: [], scenes: [] }; }
+  return reviewScenes({ graphics, scenes, speech: speechWords(packet), custom: await customText(dir), pack: await versionPack(dir), sources: await customSources(dir) });
 }

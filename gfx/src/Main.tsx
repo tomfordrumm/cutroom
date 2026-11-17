@@ -3,6 +3,7 @@ import { AbsoluteFill, continueRender, delayRender, Easing, interpolate, Offthre
 import { AudioTracks } from "./components/AudioTracks"
 import { BUILTIN } from "./components/builtin"
 import { Captions } from "./components/Captions"
+import { ThemeContext } from "./kit"
 import { LayoutContext, OverlayContext, safeArea, type Layout, type Zoom } from "./layout"
 import { clamp } from "./motion"
 import { PACK, PACK_CAPTIONS, PACK_COMPONENTS } from "./pack"
@@ -121,6 +122,7 @@ export function Main(p: MainProps) {
 
   return (
     <LayoutContext.Provider value={layout}>
+      <ThemeContext.Provider value={theme}>
       <AbsoluteFill style={{ background: isolate ? "transparent" : "#000", fontFamily: `"${theme.font}", system-ui, sans-serif` }}>
         {!isolate && (
           <AbsoluteFill style={{ transform: `scale(${scale})`, transformOrigin: `${originX * 100}% ${originY * 100}%` }}>
@@ -141,6 +143,7 @@ export function Main(p: MainProps) {
           <CaptionsComponent words={p.words} settings={captions} theme={theme} u={u} width={p.width} height={p.height} hidden={captionsHidden} box={captionArea} backdrop={backdrop} />
         )}
       </AbsoluteFill>
+      </ThemeContext.Provider>
     </LayoutContext.Provider>
   )
 }

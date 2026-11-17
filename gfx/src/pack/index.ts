@@ -4,6 +4,7 @@ import "./fonts.css"
 import type { CaptionsProps } from "../components/Captions"
 import type { CaptionsSettings, OverlayProps, Theme } from "../types"
 import info from "./info.json"
+export { ILLUSTRATIONS, type IllustrationAsset } from "./illustrations"
 
 export type PackInfo = {
   id: string

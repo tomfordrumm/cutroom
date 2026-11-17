@@ -68,7 +68,14 @@ export type Version = {
 }
 
 export type MediaFile = { name: string; kind: "audio" | "image" | "video"; size: number; duration: number | null; width: number | null; height: number | null; hasAudio: boolean }
-export type Library = { categories: { id: "music" | "sfx" | "other"; label: string; files: MediaFile[] }[]; defaultMusic: string | null }
+export type Engine = {
+  id: "hyperframes" | "onetake"; name: string; version?: string; license: string; licenseUrl?: string; proUrl?: string; homepage: string
+  bundled: boolean; installed: boolean; enabled: boolean; edition?: "free" | "pro" | null; acceptedAt?: string | null; installedAt?: string | null
+  revision?: string | null; installing?: { step: string; startedAt: string } | null; error?: string | null
+}
+export type Engines = { engines: Engine[] }
+export type BuiltinSounds = { role: string; description: string; files: { name: string; duration: number }[] }[]
+export type Library = { categories: { id: "music" | "sfx" | "other"; label: string; files: MediaFile[] }[]; defaultMusic: string | null; builtinSounds?: BuiltinSounds }
 /** Something the agent proposes to keep beyond this version; the author answers yes or no. */
 export type Proposal =
   | { kind: "dictionary"; id: number; version: number | null; status: "proposed" | "accepted" | "rejected"; from: string | null; to: string; scope: "all" | "video"; reason: string | null }

@@ -1,0 +1,1066 @@
+{
+ "format": "cutroom-sounds-v1",
+ "license": "CC0 1.0 (Kenney, www.kenney.nl)",
+ "roles": {
+  "click": {
+   "description": "щелчок мыши, нажатие кнопки, тап по экрану",
+   "files": [
+    {
+     "file": "click-1.ogg",
+     "duration": 0.1,
+     "source": "interface-sounds/click_001.ogg"
+    },
+    {
+     "file": "click-2.ogg",
+     "duration": 0.01,
+     "source": "interface-sounds/click_002.ogg"
+    },
+    {
+     "file": "click-3.ogg",
+     "duration": 0.01,
+     "source": "interface-sounds/click_003.ogg"
+    },
+    {
+     "file": "click-4.ogg",
+     "duration": 0.02,
+     "source": "interface-sounds/click_004.ogg"
+    },
+    {
+     "file": "click-5.ogg",
+     "duration": 0.01,
+     "source": "interface-sounds/click_005.ogg"
+    },
+    {
+     "file": "click-light-1.ogg",
+     "duration": 0.09,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/click1.wav"
+    },
+    {
+     "file": "click-light-2.ogg",
+     "duration": 0.06,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/click2.wav"
+    },
+    {
+     "file": "click-light-3.ogg",
+     "duration": 0.09,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/click3.wav"
+    },
+    {
+     "file": "click-light-4.ogg",
+     "duration": 0.03,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/click4.wav"
+    },
+    {
+     "file": "click-light-5.ogg",
+     "duration": 0.02,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/click5.wav"
+    },
+    {
+     "file": "mouse-click.ogg",
+     "duration": 0.05,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/mouseclick1.wav"
+    },
+    {
+     "file": "mouse-release.ogg",
+     "duration": 0.04,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/mouserelease1.wav"
+    }
+   ]
+  },
+  "key": {
+   "description": "клавиша, короткий сухой щелчок для набора текста (ставь редко: на начало набора или каждые 3–5 букв)",
+   "files": [
+    {
+     "file": "key-1.ogg",
+     "duration": 0.05,
+     "source": "interface-sounds/tick_001.ogg"
+    },
+    {
+     "file": "key-2.ogg",
+     "duration": 0.02,
+     "source": "interface-sounds/tick_002.ogg"
+    },
+    {
+     "file": "key-3.ogg",
+     "duration": 0.06,
+     "source": "interface-sounds/tick_004.ogg"
+    },
+    {
+     "file": "key-soft-1.ogg",
+     "duration": 0.23,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/rollover1.wav"
+    },
+    {
+     "file": "key-soft-2.ogg",
+     "duration": 0.03,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/rollover2.wav"
+    },
+    {
+     "file": "key-soft-3.ogg",
+     "duration": 0.07,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/rollover3.wav"
+    },
+    {
+     "file": "key-soft-4.ogg",
+     "duration": 0.05,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/rollover4.wav"
+    }
+   ]
+  },
+  "toggle": {
+   "description": "переключатель, галочка, включение и выключение настройки",
+   "files": [
+    {
+     "file": "switch-1.ogg",
+     "duration": 0.62,
+     "source": "interface-sounds/switch_001.ogg"
+    },
+    {
+     "file": "switch-2.ogg",
+     "duration": 0.61,
+     "source": "interface-sounds/switch_002.ogg"
+    },
+    {
+     "file": "switch-3.ogg",
+     "duration": 0.5,
+     "source": "interface-sounds/switch_003.ogg"
+    },
+    {
+     "file": "switch-4.ogg",
+     "duration": 0.5,
+     "source": "interface-sounds/switch_004.ogg"
+    },
+    {
+     "file": "switch-5.ogg",
+     "duration": 0.61,
+     "source": "interface-sounds/switch_005.ogg"
+    },
+    {
+     "file": "switch-6.ogg",
+     "duration": 0.61,
+     "source": "interface-sounds/switch_006.ogg"
+    },
+    {
+     "file": "switch-7.ogg",
+     "duration": 0.61,
+     "source": "interface-sounds/switch_007.ogg"
+    },
+    {
+     "file": "toggle-1.ogg",
+     "duration": 0.14,
+     "source": "interface-sounds/toggle_001.ogg"
+    },
+    {
+     "file": "toggle-2.ogg",
+     "duration": 0.14,
+     "source": "interface-sounds/toggle_002.ogg"
+    },
+    {
+     "file": "toggle-3.ogg",
+     "duration": 0.14,
+     "source": "interface-sounds/toggle_003.ogg"
+    },
+    {
+     "file": "toggle-4.ogg",
+     "duration": 0.07,
+     "source": "interface-sounds/toggle_004.ogg"
+    },
+    {
+     "file": "switch-light-1.ogg",
+     "duration": 0.27,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch2.wav"
+    },
+    {
+     "file": "switch-light-2.ogg",
+     "duration": 0.25,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch5.wav"
+    },
+    {
+     "file": "switch-light-3.ogg",
+     "duration": 0.18,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch9.wav"
+    },
+    {
+     "file": "switch-light-4.ogg",
+     "duration": 0.03,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch13.wav"
+    },
+    {
+     "file": "switch-light-5.ogg",
+     "duration": 0.23,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch17.wav"
+    },
+    {
+     "file": "switch-light-6.ogg",
+     "duration": 0.41,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch21.wav"
+    },
+    {
+     "file": "switch-light-7.ogg",
+     "duration": 0.35,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch25.wav"
+    },
+    {
+     "file": "switch-light-8.ogg",
+     "duration": 0.32,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch30.wav"
+    },
+    {
+     "file": "switch-light-9.ogg",
+     "duration": 0.46,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch34.wav"
+    },
+    {
+     "file": "switch-light-10.ogg",
+     "duration": 0.41,
+     "source": "51-ui-sound-effects-buttons-switches-and-clicks/switch38.wav"
+    }
+   ]
+  },
+  "pop": {
+   "description": "появление элемента: карточка, сообщение, пункт списка, плашка",
+   "files": [
+    {
+     "file": "drop-1.ogg",
+     "duration": 0.13,
+     "source": "interface-sounds/drop_001.ogg"
+    },
+    {
+     "file": "drop-2.ogg",
+     "duration": 0.19,
+     "source": "interface-sounds/drop_002.ogg"
+    },
+    {
+     "file": "drop-3.ogg",
+     "duration": 0.19,
+     "source": "interface-sounds/drop_003.ogg"
+    },
+    {
+     "file": "drop-4.ogg",
+     "duration": 0.29,
+     "source": "interface-sounds/drop_004.ogg"
+    },
+    {
+     "file": "select-1.ogg",
+     "duration": 0.04,
+     "source": "interface-sounds/select_001.ogg"
+    },
+    {
+     "file": "select-2.ogg",
+     "duration": 0.04,
+     "source": "interface-sounds/select_002.ogg"
+    },
+    {
+     "file": "select-3.ogg",
+     "duration": 0.37,
+     "source": "interface-sounds/select_003.ogg"
+    },
+    {
+     "file": "select-4.ogg",
+     "duration": 0.37,
+     "source": "interface-sounds/select_004.ogg"
+    },
+    {
+     "file": "select-5.ogg",
+     "duration": 0.37,
+     "source": "interface-sounds/select_005.ogg"
+    },
+    {
+     "file": "select-6.ogg",
+     "duration": 1.91,
+     "source": "interface-sounds/select_006.ogg"
+    },
+    {
+     "file": "select-7.ogg",
+     "duration": 0.06,
+     "source": "interface-sounds/select_007.ogg"
+    },
+    {
+     "file": "select-8.ogg",
+     "duration": 0.06,
+     "source": "interface-sounds/select_008.ogg"
+    },
+    {
+     "file": "pluck-1.ogg",
+     "duration": 0.1,
+     "source": "interface-sounds/pluck_001.ogg"
+    },
+    {
+     "file": "pluck-2.ogg",
+     "duration": 0.16,
+     "source": "interface-sounds/pluck_002.ogg"
+    },
+    {
+     "file": "bubble-1.ogg",
+     "duration": 0.4,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/pepSound1.mp3"
+    },
+    {
+     "file": "bubble-2.ogg",
+     "duration": 0.43,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/pepSound2.mp3"
+    },
+    {
+     "file": "bubble-3.ogg",
+     "duration": 0.35,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/pepSound3.mp3"
+    },
+    {
+     "file": "bubble-4.ogg",
+     "duration": 0.52,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/pepSound4.mp3"
+    },
+    {
+     "file": "bubble-5.ogg",
+     "duration": 0.52,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/pepSound5.mp3"
+    }
+   ]
+  },
+  "open": {
+   "description": "окно или панель открывается, разворачивается",
+   "files": [
+    {
+     "file": "open-1.ogg",
+     "duration": 0.15,
+     "source": "interface-sounds/open_001.ogg"
+    },
+    {
+     "file": "open-2.ogg",
+     "duration": 0.31,
+     "source": "interface-sounds/open_002.ogg"
+    },
+    {
+     "file": "open-3.ogg",
+     "duration": 0.31,
+     "source": "interface-sounds/open_003.ogg"
+    },
+    {
+     "file": "open-4.ogg",
+     "duration": 0.32,
+     "source": "interface-sounds/open_004.ogg"
+    },
+    {
+     "file": "maximize-1.ogg",
+     "duration": 0.26,
+     "source": "interface-sounds/maximize_001.ogg"
+    },
+    {
+     "file": "maximize-2.ogg",
+     "duration": 0.26,
+     "source": "interface-sounds/maximize_002.ogg"
+    },
+    {
+     "file": "maximize-3.ogg",
+     "duration": 0.21,
+     "source": "interface-sounds/maximize_003.ogg"
+    },
+    {
+     "file": "maximize-4.ogg",
+     "duration": 0.4,
+     "source": "interface-sounds/maximize_004.ogg"
+    },
+    {
+     "file": "maximize-5.ogg",
+     "duration": 0.52,
+     "source": "interface-sounds/maximize_005.ogg"
+    },
+    {
+     "file": "maximize-6.ogg",
+     "duration": 0.38,
+     "source": "interface-sounds/maximize_006.ogg"
+    },
+    {
+     "file": "maximize-7.ogg",
+     "duration": 0.19,
+     "source": "interface-sounds/maximize_007.ogg"
+    },
+    {
+     "file": "maximize-8.ogg",
+     "duration": 0.23,
+     "source": "interface-sounds/maximize_008.ogg"
+    },
+    {
+     "file": "maximize-9.ogg",
+     "duration": 0.22,
+     "source": "interface-sounds/maximize_009.ogg"
+    }
+   ]
+  },
+  "close": {
+   "description": "окно или панель закрывается, сворачивается, уходит",
+   "files": [
+    {
+     "file": "close-1.ogg",
+     "duration": 0.15,
+     "source": "interface-sounds/close_001.ogg"
+    },
+    {
+     "file": "close-2.ogg",
+     "duration": 0.31,
+     "source": "interface-sounds/close_002.ogg"
+    },
+    {
+     "file": "close-3.ogg",
+     "duration": 0.31,
+     "source": "interface-sounds/close_003.ogg"
+    },
+    {
+     "file": "close-4.ogg",
+     "duration": 0.32,
+     "source": "interface-sounds/close_004.ogg"
+    },
+    {
+     "file": "minimize-1.ogg",
+     "duration": 0.26,
+     "source": "interface-sounds/minimize_001.ogg"
+    },
+    {
+     "file": "minimize-2.ogg",
+     "duration": 0.26,
+     "source": "interface-sounds/minimize_002.ogg"
+    },
+    {
+     "file": "minimize-3.ogg",
+     "duration": 0.21,
+     "source": "interface-sounds/minimize_003.ogg"
+    },
+    {
+     "file": "minimize-4.ogg",
+     "duration": 0.42,
+     "source": "interface-sounds/minimize_004.ogg"
+    },
+    {
+     "file": "minimize-5.ogg",
+     "duration": 0.53,
+     "source": "interface-sounds/minimize_005.ogg"
+    },
+    {
+     "file": "minimize-6.ogg",
+     "duration": 0.37,
+     "source": "interface-sounds/minimize_006.ogg"
+    },
+    {
+     "file": "minimize-7.ogg",
+     "duration": 0.18,
+     "source": "interface-sounds/minimize_007.ogg"
+    },
+    {
+     "file": "minimize-8.ogg",
+     "duration": 0.21,
+     "source": "interface-sounds/minimize_008.ogg"
+    },
+    {
+     "file": "minimize-9.ogg",
+     "duration": 0.21,
+     "source": "interface-sounds/minimize_009.ogg"
+    },
+    {
+     "file": "back-1.ogg",
+     "duration": 0.06,
+     "source": "interface-sounds/back_001.ogg"
+    },
+    {
+     "file": "back-2.ogg",
+     "duration": 0.09,
+     "source": "interface-sounds/back_002.ogg"
+    },
+    {
+     "file": "back-3.ogg",
+     "duration": 0.09,
+     "source": "interface-sounds/back_003.ogg"
+    },
+    {
+     "file": "back-4.ogg",
+     "duration": 0.1,
+     "source": "interface-sounds/back_004.ogg"
+    }
+   ]
+  },
+  "scroll": {
+   "description": "прокрутка, перелистывание ленты",
+   "files": [
+    {
+     "file": "scroll-1.ogg",
+     "duration": 1.0,
+     "source": "interface-sounds/scroll_001.ogg"
+    },
+    {
+     "file": "scroll-2.ogg",
+     "duration": 1.0,
+     "source": "interface-sounds/scroll_002.ogg"
+    },
+    {
+     "file": "scroll-3.ogg",
+     "duration": 1.0,
+     "source": "interface-sounds/scroll_003.ogg"
+    },
+    {
+     "file": "scroll-4.ogg",
+     "duration": 1.0,
+     "source": "interface-sounds/scroll_004.ogg"
+    },
+    {
+     "file": "scroll-5.ogg",
+     "duration": 1.0,
+     "source": "interface-sounds/scroll_005.ogg"
+    }
+   ]
+  },
+  "success": {
+   "description": "готово, подтверждение, правильный ответ, задача выполнена",
+   "files": [
+    {
+     "file": "confirm-1.ogg",
+     "duration": 0.29,
+     "source": "interface-sounds/confirmation_001.ogg"
+    },
+    {
+     "file": "confirm-2.ogg",
+     "duration": 0.54,
+     "source": "interface-sounds/confirmation_002.ogg"
+    },
+    {
+     "file": "confirm-3.ogg",
+     "duration": 0.32,
+     "source": "interface-sounds/confirmation_003.ogg"
+    },
+    {
+     "file": "confirm-4.ogg",
+     "duration": 0.49,
+     "source": "interface-sounds/confirmation_004.ogg"
+    },
+    {
+     "file": "chime-1.ogg",
+     "duration": 1.64,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/threeTone1.mp3"
+    },
+    {
+     "file": "chime-2.ogg",
+     "duration": 1.07,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/threeTone2.mp3"
+    },
+    {
+     "file": "chime-3.ogg",
+     "duration": 1.1,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/twoTone1.mp3"
+    },
+    {
+     "file": "chime-4.ogg",
+     "duration": 1.45,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/twoTone2.mp3"
+    }
+   ]
+  },
+  "notify": {
+   "description": "уведомление, пришло сообщение, вопрос, внимание",
+   "files": [
+    {
+     "file": "bong.ogg",
+     "duration": 0.12,
+     "source": "interface-sounds/bong_001.ogg"
+    },
+    {
+     "file": "question-1.ogg",
+     "duration": 0.49,
+     "source": "interface-sounds/question_001.ogg"
+    },
+    {
+     "file": "question-2.ogg",
+     "duration": 0.33,
+     "source": "interface-sounds/question_002.ogg"
+    },
+    {
+     "file": "question-3.ogg",
+     "duration": 0.33,
+     "source": "interface-sounds/question_003.ogg"
+    },
+    {
+     "file": "question-4.ogg",
+     "duration": 0.33,
+     "source": "interface-sounds/question_004.ogg"
+    },
+    {
+     "file": "tone.ogg",
+     "duration": 1.48,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/tone1.mp3"
+    }
+   ]
+  },
+  "error": {
+   "description": "ошибка, неверно, отказ",
+   "files": [
+    {
+     "file": "error-1.ogg",
+     "duration": 0.16,
+     "source": "interface-sounds/error_001.ogg"
+    },
+    {
+     "file": "error-2.ogg",
+     "duration": 0.17,
+     "source": "interface-sounds/error_002.ogg"
+    },
+    {
+     "file": "error-3.ogg",
+     "duration": 0.52,
+     "source": "interface-sounds/error_003.ogg"
+    },
+    {
+     "file": "error-4.ogg",
+     "duration": 0.11,
+     "source": "interface-sounds/error_004.ogg"
+    },
+    {
+     "file": "error-5.ogg",
+     "duration": 0.46,
+     "source": "interface-sounds/error_005.ogg"
+    },
+    {
+     "file": "error-6.ogg",
+     "duration": 0.48,
+     "source": "interface-sounds/error_006.ogg"
+    },
+    {
+     "file": "error-7.ogg",
+     "duration": 0.19,
+     "source": "interface-sounds/error_007.ogg"
+    },
+    {
+     "file": "error-8.ogg",
+     "duration": 0.14,
+     "source": "interface-sounds/error_008.ogg"
+    },
+    {
+     "file": "error-tone-1.ogg",
+     "duration": 0.92,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/lowThreeTone.mp3"
+    },
+    {
+     "file": "error-tone-2.ogg",
+     "duration": 1.23,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/zapThreeToneDown.mp3"
+    }
+   ]
+  },
+  "glitch": {
+   "description": "сбой, помехи, цифровой глюк, перемотка",
+   "files": [
+    {
+     "file": "glitch-1.ogg",
+     "duration": 0.02,
+     "source": "interface-sounds/glitch_001.ogg"
+    },
+    {
+     "file": "glitch-2.ogg",
+     "duration": 0.03,
+     "source": "interface-sounds/glitch_002.ogg"
+    },
+    {
+     "file": "glitch-3.ogg",
+     "duration": 0.01,
+     "source": "interface-sounds/glitch_003.ogg"
+    },
+    {
+     "file": "glitch-4.ogg",
+     "duration": 0.02,
+     "source": "interface-sounds/glitch_004.ogg"
+    },
+    {
+     "file": "scratch-1.ogg",
+     "duration": 0.14,
+     "source": "interface-sounds/scratch_001.ogg"
+    },
+    {
+     "file": "scratch-2.ogg",
+     "duration": 0.14,
+     "source": "interface-sounds/scratch_002.ogg"
+    },
+    {
+     "file": "scratch-3.ogg",
+     "duration": 0.12,
+     "source": "interface-sounds/scratch_003.ogg"
+    },
+    {
+     "file": "scratch-4.ogg",
+     "duration": 0.33,
+     "source": "interface-sounds/scratch_004.ogg"
+    },
+    {
+     "file": "scratch-5.ogg",
+     "duration": 0.33,
+     "source": "interface-sounds/scratch_005.ogg"
+    },
+    {
+     "file": "noise-1.ogg",
+     "duration": 1.85,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/spaceTrash1.mp3"
+    },
+    {
+     "file": "noise-2.ogg",
+     "duration": 2.01,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/spaceTrash2.mp3"
+    },
+    {
+     "file": "noise-3.ogg",
+     "duration": 2.43,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/spaceTrash3.mp3"
+    },
+    {
+     "file": "noise-4.ogg",
+     "duration": 2.13,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/spaceTrash4.mp3"
+    },
+    {
+     "file": "noise-5.ogg",
+     "duration": 2.22,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/spaceTrash5.mp3"
+    },
+    {
+     "file": "zap-1.ogg",
+     "duration": 0.89,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/zap1.mp3"
+    },
+    {
+     "file": "zap-2.ogg",
+     "duration": 1.15,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/zap2.mp3"
+    },
+    {
+     "file": "zap-3.ogg",
+     "duration": 1.17,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/zapTwoTone.mp3"
+    },
+    {
+     "file": "zap-4.ogg",
+     "duration": 1.1,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/zapTwoTone2.mp3"
+    }
+   ]
+  },
+  "rise": {
+   "description": "рост, усиление, бонус, что-то улучшилось",
+   "files": [
+    {
+     "file": "power-up-1.ogg",
+     "duration": 1.08,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp1.mp3"
+    },
+    {
+     "file": "power-up-2.ogg",
+     "duration": 0.31,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp2.mp3"
+    },
+    {
+     "file": "power-up-3.ogg",
+     "duration": 0.98,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp3.mp3"
+    },
+    {
+     "file": "power-up-4.ogg",
+     "duration": 0.38,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp4.mp3"
+    },
+    {
+     "file": "power-up-5.ogg",
+     "duration": 0.32,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp5.mp3"
+    },
+    {
+     "file": "power-up-6.ogg",
+     "duration": 0.27,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp6.mp3"
+    },
+    {
+     "file": "power-up-7.ogg",
+     "duration": 0.38,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp7.mp3"
+    },
+    {
+     "file": "power-up-8.ogg",
+     "duration": 0.4,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp8.mp3"
+    },
+    {
+     "file": "power-up-9.ogg",
+     "duration": 0.37,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp9.mp3"
+    },
+    {
+     "file": "power-up-10.ogg",
+     "duration": 0.47,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp10.mp3"
+    },
+    {
+     "file": "power-up-11.ogg",
+     "duration": 0.54,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp11.mp3"
+    },
+    {
+     "file": "power-up-12.ogg",
+     "duration": 0.71,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/powerUp12.mp3"
+    },
+    {
+     "file": "sweep-up-1.ogg",
+     "duration": 0.39,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserUp1.mp3"
+    },
+    {
+     "file": "sweep-up-2.ogg",
+     "duration": 0.33,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserUp2.mp3"
+    },
+    {
+     "file": "sweep-up-3.ogg",
+     "duration": 0.42,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserUp3.mp3"
+    },
+    {
+     "file": "sweep-up-4.ogg",
+     "duration": 0.27,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserUp4.mp3"
+    },
+    {
+     "file": "sweep-up-5.ogg",
+     "duration": 0.21,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserUp5.mp3"
+    },
+    {
+     "file": "sweep-up-6.ogg",
+     "duration": 0.26,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserUp6.mp3"
+    },
+    {
+     "file": "sweep-up-7.ogg",
+     "duration": 0.29,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserUp7.mp3"
+    },
+    {
+     "file": "tone-up-1.ogg",
+     "duration": 0.38,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/highUp.mp3"
+    },
+    {
+     "file": "tone-up-2.ogg",
+     "duration": 1.09,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/zapThreeToneUp.mp3"
+    },
+    {
+     "file": "jump-1.ogg",
+     "duration": 0.34,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaseJump1.mp3"
+    },
+    {
+     "file": "jump-2.ogg",
+     "duration": 0.31,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaseJump2.mp3"
+    },
+    {
+     "file": "jump-3.ogg",
+     "duration": 0.35,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaseJump3.mp3"
+    },
+    {
+     "file": "jump-4.ogg",
+     "duration": 0.35,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaseJump4.mp3"
+    },
+    {
+     "file": "jump-5.ogg",
+     "duration": 0.29,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaseJump5.mp3"
+    }
+   ]
+  },
+  "fall": {
+   "description": "падение, уменьшение, что-то сломалось или потерялось",
+   "files": [
+    {
+     "file": "sweep-down-1.ogg",
+     "duration": 0.35,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserDown1.mp3"
+    },
+    {
+     "file": "sweep-down-2.ogg",
+     "duration": 0.25,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserDown2.mp3"
+    },
+    {
+     "file": "sweep-down-3.ogg",
+     "duration": 0.4,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/phaserDown3.mp3"
+    },
+    {
+     "file": "tone-down-1.ogg",
+     "duration": 0.41,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/highDown.mp3"
+    },
+    {
+     "file": "tone-down-2.ogg",
+     "duration": 0.65,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/lowDown.mp3"
+    },
+    {
+     "file": "tone-down-3.ogg",
+     "duration": 0.43,
+     "source": "63-digital-sound-effects-lasers-phasers-space-etc/lowRandom.mp3"
+    }
+   ]
+  },
+  "paper": {
+   "description": "бумага, книга, документ: перелистнуть, открыть, положить",
+   "files": [
+    {
+     "file": "page-flip-1.ogg",
+     "duration": 0.7,
+     "source": "50-rpg-sound-effects/bookFlip1.ogg"
+    },
+    {
+     "file": "page-flip-2.ogg",
+     "duration": 0.43,
+     "source": "50-rpg-sound-effects/bookFlip2.ogg"
+    },
+    {
+     "file": "page-flip-3.ogg",
+     "duration": 0.23,
+     "source": "50-rpg-sound-effects/bookFlip3.ogg"
+    },
+    {
+     "file": "book-open.ogg",
+     "duration": 0.15,
+     "source": "50-rpg-sound-effects/bookOpen.ogg"
+    },
+    {
+     "file": "book-close.ogg",
+     "duration": 0.23,
+     "source": "50-rpg-sound-effects/bookClose.ogg"
+    },
+    {
+     "file": "book-place-1.ogg",
+     "duration": 0.28,
+     "source": "50-rpg-sound-effects/bookPlace1.ogg"
+    },
+    {
+     "file": "book-place-2.ogg",
+     "duration": 0.35,
+     "source": "50-rpg-sound-effects/bookPlace2.ogg"
+    },
+    {
+     "file": "book-place-3.ogg",
+     "duration": 0.26,
+     "source": "50-rpg-sound-effects/bookPlace3.ogg"
+    }
+   ]
+  },
+  "impact": {
+   "description": "удар, приземление предмета, стук",
+   "files": [
+    {
+     "file": "metal-1.ogg",
+     "duration": 1.39,
+     "source": "50-rpg-sound-effects/metalPot1.ogg"
+    },
+    {
+     "file": "metal-2.ogg",
+     "duration": 0.85,
+     "source": "50-rpg-sound-effects/metalPot2.ogg"
+    },
+    {
+     "file": "metal-3.ogg",
+     "duration": 0.91,
+     "source": "50-rpg-sound-effects/metalPot3.ogg"
+    },
+    {
+     "file": "wood-chop.ogg",
+     "duration": 0.24,
+     "source": "50-rpg-sound-effects/chop.ogg"
+    },
+    {
+     "file": "soft-drop.ogg",
+     "duration": 0.42,
+     "source": "50-rpg-sound-effects/dropLeather.ogg"
+    },
+    {
+     "file": "latch-1.ogg",
+     "duration": 0.26,
+     "source": "50-rpg-sound-effects/metalLatch.ogg"
+    },
+    {
+     "file": "latch-2.ogg",
+     "duration": 0.45,
+     "source": "50-rpg-sound-effects/metalClick.ogg"
+    },
+    {
+     "file": "door-shut-1.ogg",
+     "duration": 0.67,
+     "source": "50-rpg-sound-effects/doorClose_1.ogg"
+    },
+    {
+     "file": "door-shut-2.ogg",
+     "duration": 0.61,
+     "source": "50-rpg-sound-effects/doorClose_2.ogg"
+    },
+    {
+     "file": "door-shut-3.ogg",
+     "duration": 0.71,
+     "source": "50-rpg-sound-effects/doorClose_3.ogg"
+    },
+    {
+     "file": "door-shut-4.ogg",
+     "duration": 0.59,
+     "source": "50-rpg-sound-effects/doorClose_4.ogg"
+    }
+   ]
+  },
+  "coins": {
+   "description": "монеты, деньги, оплата",
+   "files": [
+    {
+     "file": "coins-1.ogg",
+     "duration": 0.79,
+     "source": "50-rpg-sound-effects/handleCoins.ogg"
+    },
+    {
+     "file": "coins-2.ogg",
+     "duration": 0.32,
+     "source": "50-rpg-sound-effects/handleCoins2.ogg"
+    }
+   ]
+  },
+  "glass": {
+   "description": "стекло, звонкий хрупкий акцент",
+   "files": [
+    {
+     "file": "glass-1.ogg",
+     "duration": 0.28,
+     "source": "interface-sounds/glass_001.ogg"
+    },
+    {
+     "file": "glass-2.ogg",
+     "duration": 0.13,
+     "source": "interface-sounds/glass_002.ogg"
+    },
+    {
+     "file": "glass-3.ogg",
+     "duration": 0.12,
+     "source": "interface-sounds/glass_003.ogg"
+    },
+    {
+     "file": "glass-4.ogg",
+     "duration": 0.69,
+     "source": "interface-sounds/glass_004.ogg"
+    },
+    {
+     "file": "glass-5.ogg",
+     "duration": 0.13,
+     "source": "interface-sounds/glass_005.ogg"
+    },
+    {
+     "file": "glass-6.ogg",
+     "duration": 0.13,
+     "source": "interface-sounds/glass_006.ogg"
+    }
+   ]
+  }
+ }
+}

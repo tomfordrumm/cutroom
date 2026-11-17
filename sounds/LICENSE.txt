@@ -1,0 +1,13 @@
+Встроенные звуки Cutroom
+
+Источник: наборы Kenney (www.kenney.nl), опубликованные автором на OpenGameArt:
+- Interface Sounds 1.0 — https://opengameart.org/content/interface-sounds
+- UI SFX Set (51 UI sound effects) — https://opengameart.org/content/51-ui-sound-effects-buttons-switches-and-clicks
+- Digital SFX Set (63 digital sound effects) — https://opengameart.org/content/63-digital-sound-effects-lasers-phasers-space-etc
+- RPG Sounds (50 RPG sound effects) — https://opengameart.org/content/50-rpg-sound-effects
+
+Лицензия: Creative Commons Zero (CC0 1.0), http://creativecommons.org/publicdomain/zero/1.0/
+Можно использовать в личных и коммерческих проектах без указания автора.
+
+Файлы переименованы по смыслу, переведены в OGG Vorbis моно 48 кГц, тишина в начале срезана.
+Исходное имя каждого файла записано в catalog.json (поле source).
