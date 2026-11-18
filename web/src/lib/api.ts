@@ -238,3 +238,17 @@ export const fmtUsage = (u: Usage) => [u.costUsd != null ? fmtUsd(u.costUsd) : n
 export type AgentModel = { id: string; label: string; description: string; efforts: string[]; defaultEffort: string | null }
 export type AgentModels = { models: AgentModel[]; error: string | null }
 export type ImageGenerator = { generator: "codex"; codexSignedIn: boolean; enabled: boolean; available: boolean; limit: number; limits: { min: number; max: number; default: number } }
+
+/** GET /api/version: this install and the newest published version. */
+export type VersionInfo = {
+  version: string
+  revision: string | null
+  image: string | null
+  source: "published" | "local"
+  installDir: string | null
+  paused: { reason: string; since: string } | null
+  latest: string | null
+  updateAvailable: boolean
+  checkedAt: string | null
+  checkError: string | null
+}

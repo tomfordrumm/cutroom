@@ -21,6 +21,7 @@ import { enginesSnapshot, installOnetake, installOnetakePro, removeOnetake, setE
 import { assetsDir, builtinSounds, categoryDir, checkUpload, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME, SOUNDS_DIR } from "./library.js";
 import { isWhisperModel, modelDownloaded, WHISPER_MODELS, whisperModelId } from "./models.js";
 import { listSources } from "./sources.js";
+import { versionInfo, VERSION } from "./release.js";
 import { attachTerminal } from "./terminal.js";
 import { ensureWaveform, programToSource, versionTimeline, wordsAround } from "./timeline.js";
 
@@ -188,6 +189,7 @@ function stateSnapshot() {
     maxConcurrency: MAX_CONCURRENCY,
     machine: machine(),
     authRequired: Boolean(config.password),
+    version: VERSION,
   };
 }
 
@@ -451,6 +453,7 @@ route("GET", "/api/videos", (req, res) => {
   const videos = db.prepare("SELECT * FROM videos ORDER BY updated_at DESC").all().map((video) => videoSummary(video, usage.get(video.id) ?? videoUsage(video.id).total));
   send(res, 200, { videos });
 });
+route("GET", "/api/version", async (req, res, { query }) => send(res, 200, await versionInfo({ refresh: query.get("refresh") === "1" })));
 route("GET", "/api/usage", (req, res) => send(res, 200, usageSummary()));
 route("POST", "/api/videos", async (req, res) => {
   const { title, brief = "" } = await readBody(req);

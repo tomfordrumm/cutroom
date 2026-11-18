@@ -8,6 +8,7 @@ import { runEditJob, runFinalJob } from "./edit-job.js";
 import { ensureModels, whisperModelId } from "./models.js";
 import { notifyVideo } from "./notify.js";
 import { jobConcurrency } from "./queue.js";
+import { queuePause, resumeQueue } from "./release.js";
 
 const RUNNERS = { edit: runEditJob, final: runFinalJob };
 
@@ -59,6 +60,8 @@ async function run(job) {
 
 async function main() {
   log("started");
+  // update.sh pauses the queue before a restart; a fresh worker is the new version.
+  if (queuePause()) { resumeQueue(); log("queue resumed after restart"); }
   // Fetch the models early so the first edit does not wait for the download.
   // The model chosen in settings; another one is fetched when the setting changes.
   ensureModels(whisperModelId(getSetting("whisperModel")), (message) => log(message)).then(() => log("models ready")).catch((error) => log(`model download failed: ${error.message}`));
@@ -68,7 +71,8 @@ async function main() {
   while (!stopping) {
     // Read every tick, so a new setting applies without a restart. Lowering it
     // lets running jobs finish and holds new ones back.
-    const limit = jobConcurrency(getSetting("jobConcurrency"));
+    // While update.sh waits for running edits, nothing new starts.
+    const limit = queuePause() ? 0 : jobConcurrency(getSetting("jobConcurrency"));
     while (running.size < limit) {
       const job = nextJob();
       if (!job) break;

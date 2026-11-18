@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { AudioLines, Bell, Bot, Clapperboard, Layers, LogOut, Music, Palette, Volume2, Wallet, type LucideIcon } from "lucide-react"
+import { ArrowUpCircle, AudioLines, Bell, Bot, Clapperboard, Layers, LogOut, Music, Palette, Volume2, Wallet, type LucideIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, Navigate, NavLink, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -15,6 +15,7 @@ import { SoundSettings } from "@/components/SoundSettings"
 import { SpeechSettings } from "@/components/SpeechSettings"
 import { TelegramSettings } from "@/components/TelegramSettings"
 import { UsageStats } from "@/components/UsageStats"
+import { VersionSettings, versionQuery } from "@/components/VersionSettings"
 import { WebTerminal } from "@/components/WebTerminal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,11 +35,13 @@ const SECTIONS: Section[] = [
   { id: "queue", label: "Очередь монтажа", icon: Layers, description: "Сколько роликов монтировать одновременно.", render: () => <QueueSection /> },
   { id: "usage", label: "Расходы", icon: Wallet, description: "Сколько токенов и денег ушло на работу агента.", render: () => <UsageSection /> },
   { id: "notifications", label: "Уведомления", icon: Bell, description: "Сообщения, когда ролик ждёт вас.", render: () => <NotificationsSection /> },
+  { id: "updates", label: "Обновления", icon: ArrowUpCircle, description: "Версия Cutroom и как поставить новую.", render: () => <UpdatesSection /> },
 ]
 
 export default function SettingsPage() {
   const { tab } = useParams()
   const { data: state } = useAppState()
+  const { data: version } = useQuery(versionQuery)
   const section = SECTIONS.find((s) => s.id === tab)
   const nav = useRef<HTMLElement>(null)
 
@@ -73,6 +76,7 @@ export default function SettingsPage() {
             >
               <Icon className="size-4 shrink-0" />
               {label}
+              {id === "updates" && version?.updateAvailable && <span className="size-2 rounded-full bg-primary" aria-label="доступна новая версия" />}
             </NavLink>
           ))}
         </nav>
@@ -211,6 +215,14 @@ function NotificationsSection() {
   return (
     <Block title="Telegram" description="Ваш бот напишет, когда ролик смонтирован и ждёт ревью. Монтаж можно запустить и уйти.">
       <TelegramSettings />
+    </Block>
+  )
+}
+
+function UpdatesSection() {
+  return (
+    <Block title="Версия" description="Cutroom раз в несколько часов сверяется с опубликованными версиями. Обновление вы запускаете сами, когда удобно.">
+      <VersionSettings />
     </Block>
   )
 }

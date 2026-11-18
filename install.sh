@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # Cutroom installer.
 #
-#   Server (once images are published):
-#     curl -fsSL https://<host>/install.sh | sudo bash -s -- --domain cut.example.com
+#   Published image (Docker already installed: the installer travels inside the image):
+#     docker run --rm --entrypoint cat ghcr.io/tomfordrumm/cutroom:latest /opt/cutroom/release/install.sh | sudo bash -s -- --domain cut.example.com
+#   Or with this file at hand (installs Docker on Linux if missing):
+#     sudo bash install.sh --domain cut.example.com
 #   Local test from a checkout (builds the image here):
 #     ./install.sh --source . --orc ../VideoEditor
 #
 # Re-running is safe: the existing .env (password, secret) and all data volumes are kept.
+# Updates: ./update.sh in the install folder (it waits for running edits).
 set -euo pipefail
 
 SOURCE=""
@@ -14,8 +17,8 @@ INSTALL_DIR=""
 DOMAIN=""
 PORT="8080"
 ORC_PATH=""
+DEFAULT_IMAGE="ghcr.io/tomfordrumm/cutroom:latest"
 IMAGE="${CUTROOM_IMAGE:-}"
-RAW_URL="${CUTROOM_RAW_URL:-}"
 
 usage() {
   cat <<'EOF'
@@ -25,7 +28,7 @@ Usage: install.sh [options]
   --dir DIR      where to keep compose.yml and .env (default: the source dir, or /opt/cutroom)
   --domain NAME  public domain; enables HTTPS through Caddy (point DNS at this server first)
   --port N       local port of the web interface (default 8080)
-  --image REF    published image to pull instead of building
+  --image REF    published image (default ghcr.io/tomfordrumm/cutroom:latest); :X.Y.Z pins a version
 EOF
 }
 
@@ -74,15 +77,21 @@ if [ -n "$SOURCE" ]; then
   ORC_PATH="$(cd "$ORC_PATH" 2>/dev/null && pwd)" || die "OpenRoughCut checkout not found; pass --orc DIR."
   [ -f "$ORC_PATH/packages/core/src/pipeline.js" ] || die "$ORC_PATH has no packages/core (needs the core/cli/desktop split)."
 else
-  [ -n "$IMAGE" ] || die "No published image yet. Use --source DIR to build from a checkout."
+  IMAGE="${IMAGE:-$DEFAULT_IMAGE}"
   INSTALL_DIR="${INSTALL_DIR:-/opt/cutroom}"
-  [ -n "$RAW_URL" ] || die "Set CUTROOM_RAW_URL to the release URL that serves compose.yml."
 fi
 mkdir -p "$INSTALL_DIR"
+INSTALL_DIR="$(cd "$INSTALL_DIR" && pwd)"
 cd "$INSTALL_DIR"
 if [ -z "$SOURCE" ]; then
-  say "Downloading compose.yml"
-  curl -fsSL "$RAW_URL/compose.yml" -o compose.yml
+  say "Pulling $IMAGE"
+  docker pull "$IMAGE" || die "Could not pull $IMAGE. A private image needs: docker login ghcr.io"
+  # compose.yml, update.sh and .env.example ship inside the image.
+  for file in compose.yml update.sh .env.example; do
+    docker run --rm --entrypoint cat "$IMAGE" "/opt/cutroom/release/$file" >"$file.new" || die "$IMAGE has no $file"
+    mv "$file.new" "$file"
+  done
+  chmod +x update.sh
 fi
 
 random() { # no early-closing pipe: with pipefail a SIGPIPE would abort the script
@@ -124,14 +133,15 @@ if [ -n "$SOURCE" ]; then
 else
   set_env CUTROOM_IMAGE "$IMAGE"
 fi
+set_env CUTROOM_INSTALL_DIR "$INSTALL_DIR"
 
 # ---- start ------------------------------------------------------------------
 if [ -n "$SOURCE" ]; then
   say "Building the image (first build takes a few minutes: whisper.cpp, FFmpeg, agents)"
   docker compose build
 else
-  say "Pulling images"
-  docker compose pull
+  say "Pulling the rest (Caddy for HTTPS)"
+  docker compose pull --ignore-pull-failures --quiet caddy 2>/dev/null || true
 fi
 say "Starting Cutroom"
 docker compose up -d
@@ -149,6 +159,7 @@ for _ in $(seq 1 60); do
       echo "  Password: CUTROOM_PASSWORD in $INSTALL_DIR/.env"
     fi
     echo "  Logs:     cd $INSTALL_DIR && docker compose logs -f"
+    echo "  Update:   cd $INSTALL_DIR && sudo ./update.sh   (Settings shows when a new version is out)"
     echo "  The first edit downloads the Whisper model (~470 MB)."
     exit 0
   fi

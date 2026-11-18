@@ -90,7 +90,16 @@ COPY packs ./packs
 COPY sounds ./sounds
 COPY --from=web /web/dist ./web/dist
 COPY instructions ./instructions
+# What an install needs besides the image: update.sh and install.sh take them from here.
+COPY compose.yml update.sh install.sh .env.example ./release/
 RUN chmod +x src/cli.js && ln -s /opt/cutroom/src/cli.js /usr/local/bin/cutroom
+
+# The commit this image was built from (the release workflow passes it); the version is package.json.
+ARG CUTROOM_REVISION=""
+ENV CUTROOM_REVISION=${CUTROOM_REVISION}
+LABEL org.opencontainers.image.title="Cutroom" \
+      org.opencontainers.image.source="https://github.com/tomfordrumm/cutroom" \
+      org.opencontainers.image.revision="${CUTROOM_REVISION}"
 
 # All user data lives in /data (one volume); the agent's HOME keeps CLI sign-ins.
 RUN mkdir -p /data/home && chown -R node:node /data
