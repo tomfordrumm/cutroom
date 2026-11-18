@@ -96,10 +96,30 @@ export async function versionTimeline(videoId, number) {
   return { version: number, duration: segments.at(-1)?.programEnd ?? 0, segments, words: packet ? placeWords(packet.transcript, segments) : [], overlays };
 }
 
-/** Text spoken around source second `t`, for a comment's context. */
-export function wordsAround(timeline, programSeconds, radius = 2.5) {
+/**
+ * A program stretch laid onto the source: one interval per kept piece it
+ * crosses. Cuts inside the stretch fall between the intervals.
+ */
+export function programRangeToSource(segments, start, end) {
+  if (!segments.length) return [{ start: round(start), end: round(end) }];
+  return segments
+    .filter((s) => s.programEnd > start && s.programStart < end)
+    .map((s) => ({
+      start: round(s.sourceStart + Math.max(start - s.programStart, 0)),
+      end: round(s.sourceStart + Math.min(end, s.programEnd) - s.programStart),
+    }))
+    .filter((r) => r.end > r.start);
+}
+
+/**
+ * Text spoken around program second `programSeconds`, for a comment's context.
+ * With `endSeconds`, the words of the whole stretch (a little padding on each side).
+ */
+export function wordsAround(timeline, programSeconds, radius = 2.5, endSeconds = null) {
+  const from = endSeconds == null ? programSeconds - radius : programSeconds - 0.3;
+  const to = endSeconds == null ? programSeconds + radius : endSeconds + 0.3;
   return timeline.words
-    .filter((w) => w.end >= programSeconds - radius && w.start <= programSeconds + radius)
+    .filter((w) => w.end >= from && w.start <= to)
     .map((w) => w.text)
     .join(" ");
 }

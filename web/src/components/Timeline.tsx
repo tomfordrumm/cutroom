@@ -1,15 +1,20 @@
-import { MessageSquare, Trash2 } from "lucide-react"
+import { MessageSquare, Paperclip, Trash2 } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { fmtTime, vname, type Message, type Timeline as TimelineData } from "@/lib/api"
+import { CommentFiles } from "@/components/CommentFiles"
+import { fmtSpan, fmtTime, vname, type Message, type Range, type Timeline as TimelineData } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 type Props = {
+  videoId: number
   timeline: TimelineData
   currentTime: number
   comments: Message[]
+  /** The stretch selected for a comment; Shift + drag on the timeline makes one. */
+  selection: Range | null
+  onSelect: (range: Range | null) => void
   onSeek: (seconds: number) => void
   onDelete: (message: Message) => void
 }
@@ -44,8 +49,9 @@ export function SpokenLine({ timeline, currentTime }: { timeline: TimelineData; 
   )
 }
 
-function CommentMarker({ comment, left, onSeek, onDelete }: { comment: Message; left: string; onSeek: (s: number) => void; onDelete: (m: Message) => void }) {
+function CommentMarker({ videoId, comment, left, onSeek, onDelete }: { videoId: number; comment: Message; left: string; onSeek: (s: number) => void; onDelete: (m: Message) => void }) {
   const pending = comment.version == null
+  const files = comment.attachments ?? []
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -53,23 +59,24 @@ function CommentMarker({ comment, left, onSeek, onDelete }: { comment: Message; 
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onSeek(comment.at_seconds!)}
-          aria-label={`Правка на ${fmtTime(comment.at_seconds, true)}`}
+          aria-label={`Правка на ${fmtSpan(comment.at_seconds!, comment.end_seconds)}`}
           className={cn(
             "absolute bottom-1 z-10 grid size-6 -translate-x-1/2 place-items-center rounded-full text-white shadow ring-2 ring-background transition-transform hover:scale-110",
             pending ? "bg-amber-500" : "bg-zinc-400 dark:bg-zinc-600",
           )}
           style={{ left }}
         >
-          <MessageSquare className="size-3" />
+          {files.length ? <Paperclip className="size-3" /> : <MessageSquare className="size-3" />}
         </button>
       </PopoverTrigger>
       {/* React events bubble out of portals: keep the timeline from capturing this pointer */}
       <PopoverContent side="top" className="w-72 gap-2 text-sm" onPointerDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="tabular-nums">{fmtTime(comment.at_seconds, true)}</span>
+          <span className="tabular-nums">{fmtSpan(comment.at_seconds!, comment.end_seconds)}</span>
           <span>{pending ? "уйдёт в следующую версию" : `учтена в ${vname(comment.version!)}`}</span>
         </div>
         <p className="whitespace-pre-wrap break-words">{comment.body}</p>
+        <CommentFiles videoId={videoId} names={files} />
         {pending && (
           <div className="flex justify-end">
             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete(comment)}>
@@ -82,10 +89,12 @@ function CommentMarker({ comment, left, onSeek, onDelete }: { comment: Message; 
   )
 }
 
-export function Timeline({ timeline, currentTime, comments, onSeek, onDelete }: Props) {
+export function Timeline({ videoId, timeline, currentTime, comments, selection, onSelect, onSeek, onDelete }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<number | null>(null)
   const dragging = useRef(false)
+  // Where a Shift-drag started: the selection runs from here to the pointer.
+  const anchor = useRef<number | null>(null)
   const duration = Math.max(timeline.duration, 0.001)
   const pct = (t: number) => `${Math.min(100, Math.max(0, (t / duration) * 100))}%`
   const ticks = useMemo(() => {
@@ -129,14 +138,33 @@ export function Timeline({ timeline, currentTime, comments, onSeek, onDelete }: 
         onPointerDown={(e) => {
           dragging.current = true
           e.currentTarget.setPointerCapture(e.pointerId)
-          onSeek(timeAt(e.clientX))
+          const t = timeAt(e.clientX)
+          if (e.shiftKey) {
+            anchor.current = t
+            onSelect(null)
+          }
+          onSeek(t)
         }}
         onPointerMove={(e) => {
           const t = timeAt(e.clientX)
           setHover(t)
-          if (dragging.current) onSeek(t)
+          if (!dragging.current) return
+          if (anchor.current !== null) {
+            onSelect({ start: Math.min(anchor.current, t), end: Math.max(anchor.current, t) })
+            onSeek(Math.min(anchor.current, t))
+          } else onSeek(t)
         }}
-        onPointerUp={() => { dragging.current = false }}
+        onPointerUp={(e) => {
+          if (anchor.current !== null) {
+            const t = timeAt(e.clientX)
+            const range = { start: Math.min(anchor.current, t), end: Math.max(anchor.current, t) }
+            // A Shift-click without a drag selects nothing.
+            onSelect(range.end - range.start >= 0.1 ? { start: Math.round(range.start * 10) / 10, end: Math.round(range.end * 10) / 10 } : null)
+            onSeek(range.start)
+          }
+          anchor.current = null
+          dragging.current = false
+        }}
         onPointerLeave={() => setHover(null)}
       >
         {/* kept pieces of the recording, each a block; boundaries are cuts */}
@@ -150,6 +178,17 @@ export function Timeline({ timeline, currentTime, comments, onSeek, onDelete }: 
         {timeline.waveform && (
           <img src={timeline.waveform} alt="" draggable={false} className="pointer-events-none absolute inset-0 size-full object-fill opacity-70 dark:opacity-50 dark:invert" />
         )}
+        {/* commented stretches: a band along the bottom, the marker sits at its start */}
+        {comments.filter((c) => c.end_seconds != null).map((c) => (
+          <div
+            key={`band-${c.id}`}
+            className={cn("pointer-events-none absolute bottom-0 h-1.5 rounded-t-sm", c.version == null ? "bg-amber-500/70" : "bg-zinc-400/70 dark:bg-zinc-600/70")}
+            style={{ left: pct(c.at_seconds!), width: pct(c.end_seconds! - c.at_seconds!) }}
+          />
+        ))}
+        {selection && (
+          <div className="pointer-events-none absolute inset-y-0 border-x-2 border-amber-500 bg-amber-400/20" style={{ left: pct(selection.start), width: pct(selection.end - selection.start) }} />
+        )}
         {hover !== null && (
           <div className="pointer-events-none absolute inset-y-0 w-px bg-foreground/30" style={{ left: pct(hover) }}>
             <span className="absolute top-0 left-1 rounded bg-foreground px-1 text-[10px] text-background tabular-nums">{fmtTime(hover, true)}</span>
@@ -159,7 +198,7 @@ export function Timeline({ timeline, currentTime, comments, onSeek, onDelete }: 
           <span className="absolute -top-1 left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-red-500" />
         </div>
         {comments.map((c) => (
-          <CommentMarker key={c.id} comment={c} left={pct(c.at_seconds!)} onSeek={onSeek} onDelete={onDelete} />
+          <CommentMarker key={c.id} videoId={videoId} comment={c} left={pct(c.at_seconds!)} onSeek={onSeek} onDelete={onDelete} />
         ))}
       </div>
       <div className="relative h-4 overflow-hidden text-[10px] text-muted-foreground">

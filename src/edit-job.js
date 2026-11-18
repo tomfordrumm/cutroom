@@ -23,11 +23,11 @@ import { keepsToSeconds, renderVideo } from "@openroughcut/core/render-video.js"
 import { imagesSnapshot } from "./images.js";
 import { agentStatus, AGENT_LABELS, normalizeAgentModels, runAgent } from "./agent.js";
 import { config, versionName, videoDir } from "./config.js";
-import { addMessage, db, getSetting, getVideo, now, updateJob, updateVideo } from "./db.js";
+import { addMessage, db, getSetting, getVideo, messageAttachments, now, updateJob, updateVideo } from "./db.js";
 import { buildCut, exists, previewResolution, readAnswer, readJson, shortSideResolution, writeJson } from "./cut.js";
 import { detectFaces, facesSummary } from "./faces.js";
 import { customComponents, graphicsMediaRefs, readGraphics, renderGraphicsVideo, reviewGraphics, safeArea, validateGraphics, weakTransitions } from "./graphics.js";
-import { freezeMedia, listAssets, listLibrary, mediaMarkdown, versionVideoId } from "./library.js";
+import { assetsDir, freezeMedia, listAssets, listLibrary, mediaMarkdown, versionVideoId } from "./library.js";
 import { DEFAULT_PACK, resolvePack, snapshotPack, versionPack } from "./packs.js";
 import { activeEntries, dictionaryMarkdown, ingestProposals, packetWithDictionary, whisperPrompt } from "./dictionary.js";
 import { ensureModels, whisperModelId } from "./models.js";
@@ -37,7 +37,7 @@ import { enginesSnapshot, engineGuide, HYPERFRAMES } from "./engines.js";
 import { ingestRemember } from "./proposals.js";
 import { recordRun } from "./usage.js";
 import { listSources } from "./sources.js";
-import { ensureWaveform } from "./timeline.js";
+import { ensureWaveform, programRangeToSource, versionTimeline } from "./timeline.js";
 
 const EDIT_FORMAT = "cutroom-edit-v1";
 
@@ -337,6 +337,41 @@ async function validateVersion(dir, packet, duration) {
   return answer;
 }
 
+/**
+ * The author's comments sent with version `number`, as the agent reads them in
+ * request.json: the moment or stretch they point at and the files they attach.
+ */
+export async function commentsFor(videoId, number) {
+  const rows = db.prepare("SELECT * FROM messages WHERE video_id = ? AND role = 'user' AND version = ? ORDER BY id").all(videoId, number);
+  const timelines = new Map();
+  const timelineOf = async (ref) => {
+    if (!timelines.has(ref)) timelines.set(ref, await versionTimeline(videoId, ref).catch(() => null));
+    return timelines.get(ref);
+  };
+  const comments = [];
+  for (const row of rows) {
+    const comment = { body: row.body, createdAt: row.created_at };
+    if (row.at_seconds != null) {
+      comment.at = { version: versionName(row.ref_version), programSeconds: row.at_seconds, sourceSeconds: row.source_seconds };
+      if (row.end_seconds != null) {
+        comment.at.programEndSeconds = row.end_seconds;
+        comment.at.sourceEndSeconds = row.source_end_seconds;
+        // Cuts inside the stretch split it into several pieces of the source.
+        const timeline = await timelineOf(row.ref_version);
+        if (timeline) comment.at.sourceRanges = programRangeToSource(timeline.segments, row.at_seconds, row.end_seconds);
+      }
+      comment.at.words = row.context;
+    }
+    const files = [];
+    for (const name of messageAttachments(row)) {
+      if (await exists(path.join(assetsDir(videoId), name))) files.push(`assets/${name}`);
+    }
+    if (files.length) comment.files = files;
+    comments.push(comment);
+  }
+  return comments;
+}
+
 export async function runEditJob(job, { signal }) {
   const video = getVideo(job.video_id);
   if (!video) throw new Error("Ролик удалён.");
@@ -356,18 +391,7 @@ export async function runEditJob(job, { signal }) {
 
   // Pending comments belong to this version's request from now on.
   db.prepare("UPDATE messages SET version = ? WHERE video_id = ? AND role = 'user' AND version IS NULL").run(number, video.id);
-  const comments = db.prepare("SELECT body, created_at, ref_version, at_seconds, source_seconds, context FROM messages WHERE video_id = ? AND role = 'user' AND version = ? ORDER BY id")
-    .all(video.id, number)
-    .map((row) => (row.at_seconds == null ? { body: row.body, createdAt: row.created_at } : {
-      body: row.body,
-      createdAt: row.created_at,
-      at: {
-        version: versionName(row.ref_version),
-        programSeconds: row.at_seconds,
-        sourceSeconds: row.source_seconds,
-        words: row.context,
-      },
-    }));
+  const comments = await commentsFor(video.id, number);
 
   const prepared = await prepareAnalysis(video.id, sourcePath, { signal, step });
   const { media, sounds, faces, fingerprint, settings } = prepared;

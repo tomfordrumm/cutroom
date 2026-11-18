@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  ArrowLeft, Check, Download, FileJson, FileVideo, Maximize, MessageSquarePlus, Pause, Play, RotateCcw, ScrollText, Square,
-  Trash2, Upload, Volume2, VolumeX, Wand2,
+  ArrowLeft, Check, Download, FileJson, FileVideo, Maximize, MessageSquarePlus, Paperclip, Pause, Play, RotateCcw, ScrollText, Square,
+  Trash2, Upload, Volume2, VolumeX, Wand2, X,
 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { useAppState } from "@/App"
+import { PickedFiles } from "@/components/CommentFiles"
+import { MEDIA_ACCEPT } from "@/components/MediaFiles"
 import { SpokenLine, Timeline } from "@/components/Timeline"
 import { VideoAssets } from "@/components/VideoAssets"
 import { VideoChat } from "@/components/VideoChat"
@@ -20,7 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  api, fmtTime, fmtTokens, fmtUsage, fmtUsd, isActive, patch, post, STAGE_LABEL, upload, vname, type Message, type Timeline as TimelineData, type Usage, type VideoDetail,
+  api, fmtSpan, fmtTime, fmtTokens, fmtUsage, fmtUsd, isActive, patch, post, STAGE_LABEL, upload, vname, type Message, type Range, type Timeline as TimelineData, type Usage, type VideoDetail,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -78,40 +80,88 @@ function SourceUpload({ video, compact = false }: { video: VideoDetail; compact?
   )
 }
 
-/** Popover for a comment pinned to one moment of a version. Enter adds it, Shift+Enter is a new line. */
-function CommentComposer({ videoId, version, at, onDone }: { videoId: number; version: number; at: number; onDone: (added: boolean) => void }) {
+const ACCEPTED = new Set(MEDIA_ACCEPT.any.split(","))
+const accepted = (file: File) => ACCEPTED.has(file.name.slice(file.name.lastIndexOf(".")).toLowerCase())
+
+/**
+ * Popover for a comment pinned to one moment or a stretch of a version, with
+ * files to put there. Enter adds it, Shift+Enter is a new line. Files go to the
+ * video's materials when the comment is added, not when they are picked.
+ */
+function CommentComposer({ videoId, version, at, onDone }: { videoId: number; version: number; at: { start: number; end?: number }; onDone: (added: boolean) => void }) {
   const [text, setText] = useState("")
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [files, setFiles] = useState<{ file: File; preview: string }[]>([])
+  const [over, setOver] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+  const filesRef = useRef(files)
+  useEffect(() => { filesRef.current = files }, [files])
+  useEffect(() => () => filesRef.current.forEach((f) => URL.revokeObjectURL(f.preview)), [])
+
+  const pick = (list: File[]) => {
+    const good = list.filter(accepted)
+    if (good.length < list.length) toast.error(`Этот тип файла не подходит. Можно: ${MEDIA_ACCEPT.any.replaceAll(",", ", ")}`)
+    setFiles((current) => [...current, ...good.map((file) => ({ file, preview: URL.createObjectURL(file) }))])
+  }
+  const removeFile = (index: number) => setFiles((current) => {
+    URL.revokeObjectURL(current[index].preview)
+    return current.filter((_, i) => i !== index)
+  })
   const add = async () => {
     if (!text.trim() || busy) return
-    setBusy(true)
+    const attachments: string[] = []
     try {
-      await post(`/api/videos/${videoId}/messages`, { body: text, refVersion: version, atSeconds: at })
+      for (const [index, { file }] of files.entries()) {
+        const label = files.length > 1 ? `${index + 1} из ${files.length}` : file.name
+        setBusy(`${label} · 0%`)
+        const saved = await upload<{ name: string }>(`/api/videos/${videoId}/assets?unique=1&name=${encodeURIComponent(file.name)}`, file, (p) => setBusy(`${label} · ${p}%`))
+        attachments.push(saved.name)
+      }
+      setBusy("Добавляю…")
+      await post(`/api/videos/${videoId}/messages`, { body: text, refVersion: version, atSeconds: at.start, endSeconds: at.end ?? null, attachments })
       onDone(true)
     } catch (error) {
       toast.error((error as Error).message)
-      setBusy(false)
+      setBusy(null)
     }
   }
   return (
-    <div className="grid gap-2">
-      <div className="text-xs text-muted-foreground">Правка к <span className="font-medium text-foreground tabular-nums">{fmtTime(at, true)}</span> · {vname(version)}</div>
+    <div
+      className={cn("grid gap-2 rounded-md", over && "ring-2 ring-primary ring-offset-4 ring-offset-popover")}
+      onDragOver={(e) => { e.preventDefault(); setOver(true) }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false) }}
+      onDrop={(e) => { e.preventDefault(); setOver(false); pick([...e.dataTransfer.files]) }}
+    >
+      <div className="text-xs text-muted-foreground">
+        Правка {at.end != null ? "к отрезку" : "к"} <span className="font-medium text-foreground tabular-nums">{fmtSpan(at.start, at.end)}</span>
+        {at.end != null && <span className="tabular-nums"> ({(at.end - at.start).toFixed(1).replace(".", ",")} с)</span>} · {vname(version)}
+      </div>
       <Textarea
         autoFocus
         rows={3}
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onPaste={(e) => { const pasted = [...e.clipboardData.files]; if (pasted.length) { e.preventDefault(); pick(pasted) } }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); add() }
           if (e.key === "Escape") onDone(false)
         }}
-        placeholder="Что поправить в этом месте?"
+        placeholder={files.length ? "Что сделать с этим файлом здесь?" : at.end != null ? "Что поправить на этом отрезке?" : "Что поправить в этом месте?"}
       />
+      <PickedFiles files={files} onRemove={removeFile} />
+      <input ref={input} type="file" multiple accept={MEDIA_ACCEPT.any} hidden onChange={(e) => { pick([...(e.target.files ?? [])]); e.target.value = "" }} />
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">Enter — добавить</span>
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => onDone(false)}>Отмена</Button>
-          <Button size="sm" disabled={!text.trim() || busy} onClick={add}>Добавить</Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="ghost" className="-ml-2 text-muted-foreground" disabled={!!busy} onClick={() => input.current?.click()}>
+              <Paperclip /> Файл
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Картинка, видео или звук для этого места. Можно перетащить или вставить</TooltipContent>
+        </Tooltip>
+        <div className="flex items-center gap-2">
+          {busy ? <span className="max-w-32 truncate text-xs text-muted-foreground tabular-nums">{busy}</span> : <Button size="sm" variant="ghost" onClick={() => onDone(false)}>Отмена</Button>}
+          <Button size="sm" disabled={!text.trim() || !!busy} onClick={add}>Добавить</Button>
         </div>
       </div>
     </div>
@@ -142,7 +192,9 @@ export default function VideoPage() {
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
-  const [commentAt, setCommentAt] = useState<number | null>(null)
+  const [commentAt, setCommentAt] = useState<{ start: number; end?: number } | null>(null)
+  // A selection belongs to the version it was made on.
+  const [marked, setMarked] = useState<(Range & { version: number | null }) | null>(null)
   const [brief, setBrief] = useState<string | null>(null)
   const [logOpen, setLogOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -151,6 +203,8 @@ export default function VideoPage() {
   const latest = data?.latest_version ?? null
   const versionNumber = followLatest || !data?.versions.some((v) => v.number === selected) ? latest : selected
   const version = data?.versions.find((v) => v.number === versionNumber) ?? null
+  const selection = useMemo<Range | null>(() => (marked && marked.version === versionNumber ? { start: marked.start, end: marked.end } : null), [marked, versionNumber])
+  const setSelection = useCallback((range: Range | null) => setMarked(range && { ...range, version: versionNumber }), [versionNumber])
   const timeline = useQuery({
     queryKey: ["timeline", id, versionNumber],
     queryFn: () => api<TimelineData>(`/api/videos/${id}/versions/${versionNumber}/timeline`),
@@ -184,8 +238,19 @@ export default function VideoPage() {
   const openComment = useCallback(() => {
     if (versionNumber == null) return
     videoRef.current?.pause()
-    setCommentAt(Math.round((videoRef.current?.currentTime ?? 0) * 10) / 10)
-  }, [versionNumber])
+    setCommentAt(selection ? { start: selection.start, end: selection.end } : { start: Math.round((videoRef.current?.currentTime ?? 0) * 10) / 10 })
+  }, [versionNumber, selection])
+  // I and O mark the start and the end of a stretch at the playhead, as in editing apps.
+  const markEdge = useCallback((edge: "start" | "end") => {
+    const t = Math.round((videoRef.current?.currentTime ?? 0) * 10) / 10
+    const current = selection
+    const start = edge === "start" ? t : current?.start ?? 0
+    const end = edge === "end" ? t : current?.end ?? videoRef.current?.duration ?? t
+    // I after the end (or O before the start) starts a new stretch at the playhead.
+    if (end - start >= 0.1) setSelection({ start, end })
+    else if (edge === "start") setSelection({ start: t, end: Math.min(t + 1, videoRef.current?.duration ?? t + 1) })
+    else setSelection({ start: Math.max(0, t - 1), end: t })
+  }, [selection, setSelection])
   const jump = useCallback((v: number, at: number) => {
     if (v === versionNumber) seek(at)
     else {
@@ -204,10 +269,13 @@ export default function VideoPage() {
       else if (e.key === "ArrowLeft") { e.preventDefault(); seek(Math.max(0, el.currentTime - (e.shiftKey ? 5 : 1))) }
       else if (e.key === "ArrowRight") { e.preventDefault(); seek(Math.min(el.duration || 0, el.currentTime + (e.shiftKey ? 5 : 1))) }
       else if (e.key === "c" || e.key === "с") { e.preventDefault(); openComment() }
+      else if (e.key === "i" || e.key === "ш") { e.preventDefault(); markEdge("start") }
+      else if (e.key === "o" || e.key === "щ") { e.preventDefault(); markEdge("end") }
+      else if (e.key === "Escape") setSelection(null)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [togglePlay, seek, openComment])
+  }, [togglePlay, seek, openComment, markEdge, setSelection])
 
   if (!data) return null
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["video", id] })
@@ -298,19 +366,25 @@ export default function VideoPage() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <PopoverAnchor asChild>
-                            <Button size="sm" className="shrink-0" onClick={openComment}><MessageSquarePlus /> Комментарий</Button>
+                            <Button size="sm" className="shrink-0" onClick={openComment}><MessageSquarePlus /> {selection ? "К отрезку" : "Комментарий"}</Button>
                           </PopoverAnchor>
                         </TooltipTrigger>
-                        <TooltipContent>Правка к текущей секунде · клавиша C</TooltipContent>
+                        <TooltipContent className="max-w-64">
+                          {selection ? "Правка ко всему выделенному отрезку" : "Правка к текущей секунде"} · клавиша C.
+                          Отрезок: Shift + протянуть по таймлайну или клавиши I и O
+                        </TooltipContent>
                       </Tooltip>
                       <PopoverContent align="end" className="w-80" onOpenAutoFocus={(e) => e.preventDefault()}>
                         {commentAt !== null && (
                           <CommentComposer
-                            key={commentAt}
+                            key={`${commentAt.start}-${commentAt.end ?? ""}`}
                             videoId={id}
                             version={version.number}
                             at={commentAt}
-                            onDone={(added) => { setCommentAt(null); if (added) { refresh(); toast.success("Правка добавлена на таймлайн") } }}
+                            onDone={(added) => {
+                              setCommentAt(null)
+                              if (added) { setSelection(null); refresh(); toast.success("Правка добавлена на таймлайн") }
+                            }}
                           />
                         )}
                       </PopoverContent>
@@ -320,7 +394,26 @@ export default function VideoPage() {
                   <Button size="icon" variant="ghost" className="shrink-0" onClick={() => videoRef.current?.requestFullscreen()} aria-label="Во весь экран"><Maximize /></Button>
                 </div>
                 {timeline.data && <SpokenLine timeline={timeline.data} currentTime={currentTime} />}
-                {timeline.data && <Timeline timeline={timeline.data} currentTime={currentTime} comments={pins} onSeek={seek} onDelete={deleteComment} />}
+                {timeline.data && (
+                  <Timeline
+                    videoId={id}
+                    timeline={timeline.data}
+                    currentTime={currentTime}
+                    comments={pins}
+                    selection={selection}
+                    onSelect={setSelection}
+                    onSeek={seek}
+                    onDelete={deleteComment}
+                  />
+                )}
+                {selection && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="size-2 shrink-0 rounded-full bg-amber-500" />
+                    <span>Отрезок <span className="font-medium text-foreground tabular-nums">{fmtSpan(selection.start, selection.end)}</span> · {(selection.end - selection.start).toFixed(1).replace(".", ",")} с</span>
+                    <Button size="sm" variant="ghost" className="ml-auto h-6 px-2 text-xs" onClick={() => seek(selection.start)}>К началу</Button>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setSelection(null)}><X /> Снять</Button>
+                  </div>
+                )}
                 {!version && <p className="text-xs text-muted-foreground">Это исходник. Таймлайн и комментарии к секунде появятся у первой версии.</p>}
               </CardContent>
             </Card>

@@ -2,13 +2,14 @@ import { ArrowUp, BookA, Check, MapPin, Sparkles, X } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useState } from "react"
 import { toast } from "sonner"
+import { CommentFiles } from "@/components/CommentFiles"
 import { JobStatus } from "@/components/JobStatus"
 import { Button } from "@/components/ui/button"
 import { ChatContainerContent, ChatContainerRoot } from "@/components/ui/chat-container"
 import { Message, MessageContent } from "@/components/ui/message"
 import { PromptInput, PromptInputAction, PromptInputActions, PromptInputTextarea } from "@/components/ui/prompt-input"
 import { ScrollButton } from "@/components/ui/scroll-button"
-import { fmtDate, fmtTime, isActive, post, vname, type Proposal, type VideoDetail } from "@/lib/api"
+import { fmtDate, fmtSpan, isActive, post, vname, type Proposal, type VideoDetail } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -17,7 +18,7 @@ type Props = {
   onSent: () => void
 }
 
-function TimeChip({ version, at, onClick, className }: { version: number; at: number; onClick?: () => void; className?: string }) {
+function TimeChip({ version, at, end, onClick, className }: { version: number; at: number; end?: number | null; onClick?: () => void; className?: string }) {
   return (
     <button
       type="button"
@@ -25,7 +26,7 @@ function TimeChip({ version, at, onClick, className }: { version: number; at: nu
       className={cn("inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-700 tabular-nums hover:bg-amber-500/25 dark:text-amber-300", className)}
     >
       <MapPin className="size-3" />
-      {vname(version)} · {fmtTime(at, true)}
+      {vname(version)} · {fmtSpan(at, end)}
     </button>
   )
 }
@@ -139,9 +140,10 @@ export function VideoChat({ video, onJump, onSent }: Props) {
                 {mine ? (
                   <div className="max-w-[90%] rounded-2xl rounded-tr-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
                     {m.ref_version != null && m.at_seconds != null && (
-                      <TimeChip version={m.ref_version} at={m.at_seconds} onClick={() => onJump(m.ref_version!, m.at_seconds!)} className="mb-1 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25 dark:text-primary-foreground" />
+                      <TimeChip version={m.ref_version} at={m.at_seconds} end={m.end_seconds} onClick={() => onJump(m.ref_version!, m.at_seconds!)} className="mb-1 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25 dark:text-primary-foreground" />
                     )}
                     <div className="whitespace-pre-wrap break-words">{m.body}</div>
+                    <CommentFiles videoId={video.id} names={m.attachments ?? []} className="mt-1.5 [&>span]:border-primary-foreground/20 [&>span]:bg-primary-foreground/10 [&>span]:text-primary-foreground" />
                   </div>
                 ) : (
                   <MessageContent markdown className="prose prose-sm max-w-[95%] rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 dark:prose-invert prose-headings:mt-2 prose-headings:mb-1 prose-headings:text-sm prose-headings:font-semibold prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5">

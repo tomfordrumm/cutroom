@@ -64,6 +64,16 @@ export function checkUpload(category, name) {
 export { MAX_FILE };
 
 export const assetsDir = (videoId) => path.join(videoDir(videoId), "assets");
+
+/** `name` if `dir` has no such file yet, else "name 2.ext", "name 3.ext"… */
+export async function freeName(dir, name) {
+  const ext = path.extname(name);
+  const stem = name.slice(0, name.length - ext.length);
+  for (let n = 1; ; n++) {
+    const candidate = n === 1 ? name : `${stem} ${n}${ext}`;
+    if (!(await stat(path.join(dir, candidate)).then(() => true, () => false))) return candidate;
+  }
+}
 export const categoryDir = (category) => path.join(LIBRARY_DIR, category);
 
 // ---------- probing, cached per folder ---------------------------------------

@@ -47,10 +47,15 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 `);
 
-// Comments pinned to a moment of a version: program time (what the author
-// watched), source time (what the agent edits) and the words spoken there.
+// Comments pinned to a moment or a stretch of a version: program time (what the
+// author watched), source time (what the agent edits) and the words spoken there.
+// A stretch also has an end; a point comment leaves the end columns empty.
+// `attachments` is a JSON list of file names in the video's assets/ folder.
 const messageColumns = db.prepare("PRAGMA table_info(messages)").all().map((column) => column.name);
-for (const [name, type] of [["ref_version", "INTEGER"], ["at_seconds", "REAL"], ["source_seconds", "REAL"], ["context", "TEXT"]]) {
+for (const [name, type] of [
+  ["ref_version", "INTEGER"], ["at_seconds", "REAL"], ["source_seconds", "REAL"], ["context", "TEXT"],
+  ["end_seconds", "REAL"], ["source_end_seconds", "REAL"], ["attachments", "TEXT"],
+]) {
   if (!messageColumns.includes(name)) db.exec(`ALTER TABLE messages ADD COLUMN ${name} ${type}`);
 }
 
@@ -77,9 +82,21 @@ export function updateVideo(id, fields) {
     .run(...keys.map((k) => fields[k]), now(), id);
 }
 
-export function addMessage(videoId, role, body, version = null, pin = {}) {
-  db.prepare("INSERT INTO messages (video_id, version, role, body, created_at, ref_version, at_seconds, source_seconds, context) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(videoId, version, role, body, now(), pin.refVersion ?? null, pin.atSeconds ?? null, pin.sourceSeconds ?? null, pin.context ?? null);
+export function addMessage(videoId, role, body, version = null, pin = {}, attachments = []) {
+  db.prepare(`INSERT INTO messages (video_id, version, role, body, created_at, ref_version, at_seconds, source_seconds, context, end_seconds, source_end_seconds, attachments)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(videoId, version, role, body, now(), pin.refVersion ?? null, pin.atSeconds ?? null, pin.sourceSeconds ?? null, pin.context ?? null,
+      pin.endSeconds ?? null, pin.sourceEndSeconds ?? null, attachments.length ? JSON.stringify(attachments) : null);
+}
+
+/** File names a message has attached, from its JSON column. */
+export function messageAttachments(row) {
+  try {
+    const list = JSON.parse(row.attachments ?? "[]");
+    return Array.isArray(list) ? list.filter((name) => typeof name === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 export function activeJob(videoId) {

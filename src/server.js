@@ -10,7 +10,7 @@ import { imagesSnapshot, setImageSettings } from "./images.js";
 import { agentModels, agentStatus, AGENT_LABELS, EFFORTS, normalizeAgentModels } from "./agent.js";
 import { DEFAULT_PACK, installPackZip, listPacks, packSummary, removePack, resolvePack } from "./packs.js";
 import { AGENTS, config, versionName, videoDir } from "./config.js";
-import { activeJob, addMessage, db, enqueueJob, getSetting, getVideo, now, setSetting, updateVideo } from "./db.js";
+import { activeJob, addMessage, db, getSetting, getVideo, messageAttachments, now, setSetting, updateVideo } from "./db.js";
 import { bindChat, disconnectTelegram, NOTIFY_EVENTS, sendTest, setToken, telegramState, updateTelegram } from "./notify.js";
 import { isJobConcurrency, jobConcurrency, machine, MAX_CONCURRENCY } from "./queue.js";
 import { normalizeSound, SOUND_DEFAULTS, SOUND_LIMITS } from "./sound.js";
@@ -18,12 +18,14 @@ import { backfillUsage, usageByVideo, usageSummary, videoUsage } from "./usage.j
 import { backfillProposals, decideProposal, videoProposals } from "./proposals.js";
 import { addEntry, listDictionary, removeEntry, updateEntry } from "./dictionary.js";
 import { enginesSnapshot, installOnetake, installOnetakePro, removeOnetake, setEngineEnabled } from "./engines.js";
-import { assetsDir, builtinSounds, categoryDir, checkUpload, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME, SOUNDS_DIR } from "./library.js";
+import { assetsDir, builtinSounds, categoryDir, checkUpload, freeName, LIBRARY_CATEGORIES, listAssets, listLibrary, MEDIA_MIME, SOUNDS_DIR } from "./library.js";
 import { isWhisperModel, modelDownloaded, WHISPER_MODELS, whisperModelId } from "./models.js";
 import { listSources } from "./sources.js";
 import { versionInfo, VERSION } from "./release.js";
 import { attachTerminal } from "./terminal.js";
-import { ensureWaveform, programToSource, versionTimeline, wordsAround } from "./timeline.js";
+import { ensureWaveform, versionTimeline } from "./timeline.js";
+import { acceptVersion, addComment, startEdit } from "./video-actions.js";
+import { startTelegramBot } from "./telegram-bot.js";
 
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -466,7 +468,8 @@ route("POST", "/api/videos", async (req, res) => {
 });
 route("GET", "/api/videos/:id", async (req, res, { params }) => {
   const video = requireVideo(params.id);
-  const messages = db.prepare("SELECT * FROM messages WHERE video_id = ? ORDER BY id").all(video.id);
+  const messages = db.prepare("SELECT * FROM messages WHERE video_id = ? ORDER BY id").all(video.id)
+    .map((message) => ({ ...message, attachments: messageAttachments(message) }));
   send(res, 200, { ...videoSummary(video), sources: await listSources(video.id), assets: await listAssets(video.id), versions: await versionsOf(video.id), messages, proposals: videoProposals(video.id) });
 });
 route("PATCH", "/api/videos/:id", async (req, res, { params }) => {
@@ -507,13 +510,16 @@ route("PUT", "/api/videos/:id/sources", async (req, res, { params, query }) => {
   send(res, 200, { sources: await listSources(video.id) });
 });
 // Materials attached to the video: pictures, clips, audio the edit may use.
+// `unique=1` (files attached to a comment) keeps an existing material with the
+// same name and stores the upload as "name 2.png"; the answer gives the name used.
 route("PUT", "/api/videos/:id/assets", async (req, res, { params, query }) => {
   const video = requireVideo(params.id);
-  const name = safeName(query.get("name"));
+  let name = safeName(query.get("name"));
   try { checkUpload(null, name); } catch (error) { throw new HttpError(400, error.message); }
+  if (query.get("unique") === "1") name = await freeName(assetsDir(video.id), name);
   await receiveUpload(req, assetsDir(video.id), name);
   updateVideo(video.id, {});
-  send(res, 200, { assets: await listAssets(video.id) });
+  send(res, 200, { name, assets: await listAssets(video.id) });
 });
 route("DELETE", "/api/videos/:id/assets/:file", async (req, res, { params }) => {
   const video = requireVideo(params.id);
@@ -527,17 +533,8 @@ route("GET", "/media/videos/:id/assets/:file", async (req, res, { params }) => {
 
 route("POST", "/api/videos/:id/messages", async (req, res, { params }) => {
   const video = requireVideo(params.id);
-  const { body, refVersion, atSeconds } = await readBody(req);
-  if (!String(body ?? "").trim()) throw new HttpError(400, "Пустое сообщение");
-  let pin = {};
-  if (refVersion != null && Number.isFinite(Number(atSeconds))) {
-    const timeline = await versionTimeline(video.id, Number(refVersion)).catch(() => null);
-    if (!timeline) throw new HttpError(400, "Нет такой версии");
-    const at = Math.min(Math.max(Number(atSeconds), 0), timeline.duration);
-    pin = { refVersion: Number(refVersion), atSeconds: at, sourceSeconds: programToSource(timeline.segments, at), context: wordsAround(timeline, at) || null };
-  }
-  addMessage(video.id, "user", String(body).trim(), null, pin);
-  updateVideo(video.id, {});
+  const { body, refVersion, atSeconds, endSeconds, attachments = [] } = await readBody(req);
+  await addComment(video.id, { body, refVersion, atSeconds, endSeconds, attachments }, safeName);
   send(res, 201, { ok: true });
 });
 // Only comments not yet sent to an edit can be removed; sent ones belong to a version's request.
@@ -551,25 +548,23 @@ route("POST", "/api/videos/:id/proposals/:kind/:proposalId", async (req, res, { 
   updateVideo(video.id, {});
   send(res, 200, proposal);
 });
-route("DELETE", "/api/videos/:id/messages/:messageId", (req, res, { params }) => {
+route("DELETE", "/api/videos/:id/messages/:messageId", async (req, res, { params }) => {
   const video = requireVideo(params.id);
-  const message = db.prepare("SELECT version FROM messages WHERE id = ? AND video_id = ? AND role = 'user'").get(Number(params.messageId), video.id);
+  const message = db.prepare("SELECT version, attachments FROM messages WHERE id = ? AND video_id = ? AND role = 'user'").get(Number(params.messageId), video.id);
   if (!message) throw new HttpError(404, "Правка не найдена");
   if (message.version != null) throw new HttpError(409, "Эта правка уже ушла в версию");
   db.prepare("DELETE FROM messages WHERE id = ?").run(Number(params.messageId));
+  // Files uploaded with the comment go with it, unless another comment uses them too.
+  const stillUsed = new Set(db.prepare("SELECT attachments FROM messages WHERE video_id = ? AND attachments IS NOT NULL").all(video.id).flatMap(messageAttachments));
+  for (const name of messageAttachments(message)) {
+    if (!stillUsed.has(name)) await unlink(path.join(assetsDir(video.id), safeName(name))).catch(() => {});
+  }
   updateVideo(video.id, {});
   send(res, 200, { ok: true });
 });
 route("POST", "/api/videos/:id/edit", async (req, res, { params }) => {
   const video = requireVideo(params.id);
-  if (activeJob(video.id)) throw new HttpError(409, "Монтаж уже идёт");
-  if (!(await listSources(video.id)).length) throw new HttpError(400, "Сначала загрузите исходник");
-  const agent = getSetting("agent", "none");
-  if (agent !== "none" && !agentStatus()[agent]) throw new HttpError(400, `${AGENT_LABELS[agent]} не подключён: войдите в терминале настроек`);
-  enqueueJob(video.id, "edit");
-  updateVideo(video.id, { stage: "editing", accepted_version: null });
-  addMessage(video.id, "system", video.latest_version ? "Отправлено на перемонтаж." : "Отправлено в монтаж.");
-  send(res, 202, videoSummary(getVideo(video.id)));
+  send(res, 202, videoSummary(await startEdit(video.id)));
 });
 route("POST", "/api/videos/:id/cancel", (req, res, { params }) => {
   const video = requireVideo(params.id);
@@ -586,12 +581,7 @@ route("POST", "/api/videos/:id/cancel", (req, res, { params }) => {
 route("POST", "/api/videos/:id/accept", async (req, res, { params }) => {
   const video = requireVideo(params.id);
   const { version = video.latest_version } = await readBody(req);
-  if (!version) throw new HttpError(400, "Нет версии для приёмки");
-  if (activeJob(video.id)) throw new HttpError(409, "Дождитесь окончания монтажа");
-  updateVideo(video.id, { stage: "accepted", accepted_version: Number(version) });
-  addMessage(video.id, "system", `Версия ${versionName(version)} принята. Рендерю финал в полном разрешении.`, Number(version));
-  enqueueJob(video.id, "final", Number(version));
-  send(res, 200, videoSummary(getVideo(video.id)));
+  send(res, 200, videoSummary(acceptVersion(video.id, version)));
 });
 route("POST", "/api/videos/:id/reopen", (req, res, { params }) => {
   const video = requireVideo(params.id);
@@ -662,6 +652,8 @@ const server = http.createServer(async (req, res) => {
 server.requestTimeout = 0; // large uploads
 attachTerminal(server, { isAuthenticated });
 server.listen(config.port, () => console.log(`Cutroom on http://0.0.0.0:${config.port}${config.password ? "" : " (no password set)"}`));
+// Buttons and replies in Telegram: one long poll, here and not in the worker.
+startTelegramBot();
 // Versions made before runs were recorded: read their agent logs once.
 backfillProposals().then((added) => { if (added) console.log(`Proposals: ${added} earlier taste proposals read from replies.`); }).catch((error) => console.log(`Proposals backfill failed: ${error.message}`));
 backfillUsage().then((added) => { if (added) console.log(`Usage: ${added} earlier agent runs read from logs.`); }).catch((error) => console.log(`Usage backfill failed: ${error.message}`));

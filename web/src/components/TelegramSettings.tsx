@@ -110,6 +110,11 @@ export function TelegramSettings() {
               <Button variant="ghost" size="sm" onClick={() => run(() => api<Telegram>("/api/telegram", { method: "DELETE" }), "Telegram отключён")} disabled={busy}>Отключить</Button>
             </span>
           </div>
+          <p className="text-sm text-muted-foreground">
+            В уведомлении о новой версии есть кнопка «Показать ролик»: бот пришлёт превью прямо в чат (до 50 МБ).
+            Ответьте на видео, и ответ станет правкой к перемонтажу. Таймкод в начале строки, например «0:15 убери кашель»
+            или «0:10–0:20 покажи скриншот», привяжет правку к месту. Там же кнопки «Перемонтировать» и «Принять».
+          </p>
           <div className="grid gap-2">
             <Label>Когда писать</Label>
             {(Object.keys(data.eventLabels) as NotifyEvent[]).map((event) => (

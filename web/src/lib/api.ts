@@ -51,8 +51,16 @@ export type Message = {
   ref_version: number | null
   at_seconds: number | null
   source_seconds: number | null
+  /** End of a commented stretch; null for a comment on one moment. */
+  end_seconds: number | null
+  source_end_seconds: number | null
   context: string | null
+  /** File names in the video's materials (assets/) attached to the comment. */
+  attachments: string[]
 }
+
+/** A stretch of program time the author selected on the timeline. */
+export type Range = { start: number; end: number }
 
 export type Version = {
   number: number
@@ -207,6 +215,10 @@ export const STAGES: [Stage, string][] = [
 ]
 export const STAGE_LABEL = Object.fromEntries(STAGES) as Record<Stage, string>
 
+/** "0:03.2" for a moment, "0:03.2–0:13.0" for a stretch. */
+export const fmtSpan = (start: number, end?: number | null) => (end != null ? `${fmtTime(start, true)}–${fmtTime(end, true)}` : fmtTime(start, true))
+export const assetUrl = (videoId: number, name: string) => `/media/videos/${videoId}/assets/${encodeURIComponent(name)}`
+
 export const vname = (n: number) => `v${String(n).padStart(3, "0")}`
 export const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
@@ -217,7 +229,8 @@ export function fmtTime(seconds: number | null | undefined, tenths = false) {
   const m = Math.floor(seconds / 60)
   const s = seconds - m * 60
   const whole = Math.floor(s)
-  const tail = tenths ? `.${Math.floor((s - whole) * 10)}` : ""
+  // The epsilon keeps 9.7 from showing as 9.6: 9.7 - 9 is 0.6999… in floating point.
+  const tail = tenths ? `.${Math.min(9, Math.floor((s - whole) * 10 + 1e-6))}` : ""
   return `${m}:${String(whole).padStart(2, "0")}${tail}`
 }
 
