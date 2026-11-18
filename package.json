@@ -1,6 +1,6 @@
 {
   "name": "cutroom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Self-hosted AI video editing room: a kanban of videos, an editing agent on your own subscription, versions and comments until a cut is accepted.",
