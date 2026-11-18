@@ -19,15 +19,17 @@ function exportsOf(source) {
 }
 
 test("every export of the cutroom module is described in the guide", async () => {
-  const guide = (await read("instructions", "guide", "kit.md")) + (await read("instructions", "guide", "motion.md"));
+  const guide = (await read("instructions", "guide", "kit.md")) + (await read("instructions", "guide", "motion.md")) + (await read("instructions", "guide", "library.md"));
   const api = await read("gfx", "src", "api.ts");
   const names = new Set();
   for (const file of ["layout.ts", "motion.ts", "moves.ts", "kit.tsx"]) for (const n of exportsOf(await read("gfx", "src", file))) names.add(n);
+  // The library's components and functions (its prop types are described with them).
+  for (const m of (await read("gfx", "src", "library", "index.ts")).matchAll(/^export \{ ([A-Za-z]\w*)/gm)) names.add(m[1]);
   for (const m of api.matchAll(/^export (?:type )?\{([^}]*)\} from/gm)) for (const n of m[1].split(",")) if (n.trim()) names.add(n.trim());
   const moves = (await read("gfx", "src", "moves.ts")).match(/export const moves = \{([^}]*)\}/)[1].split(",").map((n) => n.trim()).filter(Boolean);
   for (const n of moves) names.add(n);
   const missing = [...names].filter((n) => !guide.includes(`\`${n}`) && !guide.includes(`${n}(`));
-  assert.deepEqual(missing, [], `нет в guide/kit.md и guide/motion.md: ${missing.join(", ")}`);
+  assert.deepEqual(missing, [], `нет в guide/kit.md, guide/motion.md и guide/library.md: ${missing.join(", ")}`);
 });
 
 test("every built-in element and its type is in guide/elements.md", async () => {
@@ -40,6 +42,6 @@ test("every built-in element and its type is in guide/elements.md", async () => 
 test("AGENTS.md keeps rules, references live in guide", async () => {
   const agents = await read("instructions", "AGENTS.md");
   assert.ok(Buffer.byteLength(agents) < 44_000, `AGENTS.md ${Buffer.byteLength(agents)} байт: справочники — в guide/`);
-  for (const name of ["elements.md", "kit.md", "motion.md", "storyboard.md", "clips.md", "images.md", "revisions.md"]) assert.match(agents, new RegExp(`guide/${name.replace(".", "\\.")}`));
+  for (const name of ["elements.md", "kit.md", "motion.md", "storyboard.md", "library.md", "clips.md", "images.md", "revisions.md"]) assert.match(agents, new RegExp(`guide/${name.replace(".", "\\.")}`));
   assert.match(agents, /\/opt\/cutroom/);
 });

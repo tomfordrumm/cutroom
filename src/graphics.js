@@ -168,6 +168,18 @@ export function validateGraphics(raw, { duration, custom = [], pack = null, medi
       if (!known.length) { problems.push(`${where}: в пакете вкуса нет иллюстраций, sticker недоступен.`); return; }
       if (!known.includes(o.props?.id)) { problems.push(`${where}: props.id — id иллюстрации из illustrations.md, «${o.props?.id ?? ""}» нет.`); return; }
     }
+    if ((o.type === "custom" || o.type === "pack") && o.props?.files !== undefined) {
+      // Pictures a component draws itself (BeforeAfter): name → file reference; the component gets URLs.
+      const files = o.props.files;
+      if (!files || typeof files !== "object" || Array.isArray(files)) { problems.push(`${where}: props.files — объект { имя: "images/…" | "assets/…" | "library/other/…" }.`); return; }
+      const resolved = {};
+      for (const [name, ref] of Object.entries(files)) {
+        const file = checkFile(ref, ["image"], `${where}.props.files.${name}`, problems, media);
+        if (!file) return;
+        resolved[name] = file.ref;
+      }
+      o = { ...o, props: { ...o.props, files: resolved } };
+    }
     if (o.type === "chat" && !chatValid(o.props, where, problems, { start, end })) return;
     overlays.push({ id, type: o.type, component: o.type === "custom" || o.type === "pack" ? o.component : undefined, start, end: Math.min(end, duration), props: o.props ?? {} });
   });
@@ -205,8 +217,9 @@ const label = (o) => String(o.type === "action"
 export function graphicsMediaRefs(graphics) {
   return [
     ...graphics.overlays.filter((o) => o.type === "image" || o.type === "video" || (o.type === "sticker" && o.props.file)).map((o) => o.props.file),
+    ...graphics.overlays.flatMap((o) => (o.type === "custom" || o.type === "pack") && o.props?.files ? Object.values(o.props.files) : []),
     ...(graphics.audio ?? []).map((a) => a.file),
-  ];
+  ].filter((ref, i, all) => all.indexOf(ref) === i);
 }
 
 /** Overlays on program time and frames; overlays lying wholly in cut parts are dropped with a warning. */
@@ -403,6 +416,14 @@ async function audioLevels(dir, audio, mediaFiles) {
   return settings ? { settings, voiceLufs, files: loudness } : null;
 }
 
+/** Props as the template gets them: file references become URLs the renderer can fetch. */
+function overlayProps(type, props, mediaUrls) {
+  if ((type === "custom" || type === "pack") && props.files) {
+    return { ...props, files: Object.fromEntries(Object.entries(props.files).map(([name, ref]) => [name, mediaUrls[ref]])) };
+  }
+  return props.file ? { ...props, src: mediaUrls[props.file] } : props;
+}
+
 function inputProps(prepared, { videoUrl, mediaUrls = {}, width, height, isolate = null }) {
   const { graphics, timeline, fps, overlays, faces, audio } = prepared;
   return {
@@ -414,7 +435,7 @@ function inputProps(prepared, { videoUrl, mediaUrls = {}, width, height, isolate
     theme: graphics.theme,
     captions: graphics.captions,
     words: timeline.words.map(({ start, end, text }) => ({ start, end, text })),
-    overlays: overlays.map(({ id, type, component, from, to, props }) => ({ id, type, component, from, to, props: props.file ? { ...props, src: mediaUrls[props.file] } : props })),
+    overlays: overlays.map(({ id, type, component, from, to, props }) => ({ id, type, component, from, to, props: overlayProps(type, props, mediaUrls) })),
     faces: faces.map(({ t, box }) => ({ t, box })),
     audio: audio.map(({ id, type, file, from, to, volume, pauseVolume, fadeIn, fadeOut, offset, loop }) => ({ id, type, src: mediaUrls[file], from, to, volume, pauseVolume, fadeIn, fadeOut, offset, loop })),
     isolate,

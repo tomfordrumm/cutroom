@@ -90,6 +90,20 @@ test("a sticker can show a generated picture of the version", async () => {
   assert.throws(() => validateGraphics({ format: "cutroom-graphics-v1", overlays: [{ id: "x", type: "sticker", start: 1, end: 3, props: { file: "assets/x.png" } }] }, { duration: 10, media }), /images\/<имя>\.png/);
 });
 
+test("a custom component gets pictures through props.files", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "cutroom-images-files-"));
+  await mkdir(path.join(dir, "images"), { recursive: true });
+  await cp(fixture, path.join(dir, "images", "plate.png"));
+  const media = { videoId: 1, versionDir: dir };
+  const overlay = (files) => ({ format: "cutroom-graphics-v1", overlays: [{ id: "ba", type: "custom", component: "Plate", start: 1, end: 3, props: { files } }, { id: "st", type: "sticker", start: 4, end: 5, props: { file: "images/plate.png" } }] });
+  const graphics = validateGraphics(overlay({ before: "images/plate.png", after: "./images/plate.png" }), { duration: 10, custom: ["Plate"], media });
+  assert.deepEqual(graphics.overlays[0].props.files, { before: "images/plate.png", after: "images/plate.png" });
+  // One file, however many elements use it.
+  assert.deepEqual(graphicsMediaRefs(graphics), ["images/plate.png"]);
+  assert.throws(() => validateGraphics(overlay({ before: "images/none.png" }), { duration: 10, custom: ["Plate"], media }), /files\.before/);
+  assert.throws(() => validateGraphics(overlay(["images/plate.png"]), { duration: 10, custom: ["Plate"], media }), /props\.files — объект/);
+});
+
 test("Codex models come from its catalog, hidden ones left out", () => {
   const models = parseCodexModels({ models: [
     { slug: "b", display_name: "B", priority: 2, visibility: "list", supported_reasoning_levels: [{ effort: "low" }, { effort: "ultra" }], default_reasoning_level: "low" },
