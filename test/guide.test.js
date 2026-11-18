@@ -24,7 +24,7 @@ test("every export of the cutroom module is described in the guide", async () =>
   const names = new Set();
   for (const file of ["layout.ts", "motion.ts", "moves.ts", "kit.tsx"]) for (const n of exportsOf(await read("gfx", "src", file))) names.add(n);
   // The library's components and functions (its prop types are described with them).
-  for (const m of (await read("gfx", "src", "library", "index.ts")).matchAll(/^export \{ ([A-Za-z]\w*)/gm)) names.add(m[1]);
+  for (const m of (await read("gfx", "src", "library", "index.ts")).matchAll(/^export \{([^}]*)\}/gm)) for (const n of m[1].split(",")) if (n.trim() && !n.trim().startsWith("type ")) names.add(n.trim());
   for (const m of api.matchAll(/^export (?:type )?\{([^}]*)\} from/gm)) for (const n of m[1].split(",")) if (n.trim()) names.add(n.trim());
   const moves = (await read("gfx", "src", "moves.ts")).match(/export const moves = \{([^}]*)\}/)[1].split(",").map((n) => n.trim()).filter(Boolean);
   for (const n of moves) names.add(n);
